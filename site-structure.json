@@ -1,0 +1,102 @@
+[
+  {
+    "label": "POST-LOGIN HOME",
+    "url": "http://industriatest.ocaicp.com/andalucia",
+    "bodyText": "INDUSTRIA ANDALUCIA\nSALIR\nFecha inicio inspección desde\nFecha inicio inspección hasta\nDelegación\nInspector\nTipo de tramitación\nNumero de pedido\nSIN DEFECTOS\nLEVE A REPARAR\nGRAVE\nCRÍTICO\nArticulos\nBUSCAR\nGENERAR XML\n\t\n\tPedido\tLínea\tNº SIOCA\tFecha Inspección\tResultado\tArticulo\tCod. Instalacion\tDir. Instalacion\tEstado Inspeccion\tEstado Tramitacion\nNo data available\nRows per page:\n10\n–",
+    "navItems": [
+      {
+        "text": "SALIR",
+        "href": "http://industriatest.ocaicp.com/"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "text",
+        "id": "dateDesde",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "text",
+        "id": "dateHasta",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "text",
+        "id": "input-39",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "hidden",
+        "id": "",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "text",
+        "id": "input-44",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "hidden",
+        "id": "",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "text",
+        "id": "input-49",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "hidden",
+        "id": "",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "text",
+        "id": "input-54",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "text",
+        "id": "input-63",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "hidden",
+        "id": "",
+        "placeholder": "",
+        "label": ""
+      },
+      {
+        "type": "text",
+        "id": "input-114",
+        "placeholder": "",
+        "label": "Rows per page:"
+      },
+      {
+        "type": "hidden",
+        "id": "",
+        "placeholder": "",
+        "label": ""
+      }
+    ],
+    "buttons": [
+      "SALIR",
+      "SIN DEFECTOS",
+      "LEVE A REPARAR",
+      "GRAVE",
+      "CRÍTICO",
+      "BUSCAR",
+      "GENERAR XML"
+    ]
+  }
+]

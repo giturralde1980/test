@@ -1,0 +1,31 @@
+{
+  "name": "industria",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "cross-env HEADLESS=false playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "cross-env HEADLESS=false playwright test --debug",
+    "report": "playwright show-report reports/html",
+    "report:summary": "xunit-viewer -r reports/junit/results.xml -o reports/summary.html && start reports/summary.html",
+    "test:full": "playwright test && npm run report:summary",
+    "test:full:headed": "cross-env HEADLESS=false playwright test && npm run report:summary",
+    "xray:import": "ts-node scripts/xray-import.ts",
+    "test:xray": "playwright test && ts-node scripts/xray-import.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.1",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "xunit-viewer": "^10.6.1"
+  }
+}

@@ -42,20 +42,25 @@ jobs:
         if: always()
         shell: powershell
         run: |
-          $xml = "reports/junit/results.xml"
+          Write-Host "Working dir: $(Get-Location)"
+          $xml = Join-Path (Get-Location) "reports/junit/results.xml"
+          Write-Host "Looking for: $xml"
           if (Test-Path $xml) {
             [xml]$j = Get-Content $xml
             $s = $j.testsuites
-            $total = $s.tests; $failed = $s.failures; $errors = $s.errors; $skipped = $s.skipped
-            $passed = [int]$total - [int]$failed - [int]$errors - [int]$skipped
-            $icon = if ([int]$failed -eq 0 -and [int]$errors -eq 0) { "✅" } else { "❌" }
-            $summary = @"
-          ## $icon Playwright Test Results
-          | Total | Passed | Failed | Errors | Skipped |
-          |-------|--------|--------|--------|---------|
-          | $total | $passed | $failed | $errors | $skipped |
-          "@
-            $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            $total  = [int]$s.tests
+            $failed = [int]$s.failures
+            $errors = [int]$s.errors
+            $skipped = [int]$s.skipped
+            $passed = $total - $failed - $errors - $skipped
+            $icon = if ($failed -eq 0 -and $errors -eq 0) { "✅" } else { "❌" }
+            $lines = @(
+              "## $icon Playwright Test Results",
+              "| Total | Passed | Failed | Errors | Skipped |",
+              "|-------|--------|--------|--------|---------|",
+              "| $total | $passed | $failed | $errors | $skipped |"
+            )
+            $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           } else {
-            "## ⚠️ No se encontró el reporte JUnit" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            "## ⚠️ No se encontró el reporte JUnit en: $xml" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }

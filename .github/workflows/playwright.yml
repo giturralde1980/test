@@ -33,13 +33,27 @@ jobs:
         if: steps.cache-playwright.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
+      - name: Debug - versions
+        run: |
+          node --version
+          npm --version
+          npx playwright --version
+
+      - name: Debug - check site reachability
+        run: |
+          echo "BASE_URL is set: ${{ secrets.BASE_URL != '' }}"
+          echo "TEST_USERNAME is set: ${{ secrets.TEST_USERNAME != '' }}"
+          echo "TEST_PASSWORD is set: ${{ secrets.TEST_PASSWORD != '' }}"
+          curl -v --max-time 10 "${{ secrets.BASE_URL }}" || echo "CURL FAILED — site may not be reachable from GitHub runner"
+
       - name: Run tests
-        run: npx playwright test
+        run: npx playwright test --reporter=list
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
           HEADLESS: true
+          DEBUG: pw:api
 
       - name: Upload report
         if: always()

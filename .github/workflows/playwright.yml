@@ -53,8 +53,7 @@ jobs:
             $errors = [int]$s.errors
             $skipped = [int]$s.skipped
             $passed = $total - $failed - $errors - $skipped
-            $icon = if ($failed -eq 0 -and $errors -eq 0) { "✅" } else { "❌" }
-            $content = "## $icon Playwright Test Results`n"
+            $content = "## Playwright Test Results`n"
             $content += "| Total | Passed | Failed | Errors | Skipped |`n"
             $content += "|-------|--------|--------|--------|---------|`n"
             $content += "| $total | $passed | $failed | $errors | $skipped |`n"

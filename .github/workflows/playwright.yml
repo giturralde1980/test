@@ -54,14 +54,12 @@ jobs:
             $skipped = [int]$s.skipped
             $passed = $total - $failed - $errors - $skipped
             $icon = if ($failed -eq 0 -and $errors -eq 0) { "✅" } else { "❌" }
-            $lines = @(
-              "## $icon Playwright Test Results",
-              "| Total | Passed | Failed | Errors | Skipped |",
-              "|-------|--------|--------|--------|---------|",
-              "| $total | $passed | $failed | $errors | $skipped |"
-            )
+            $content = "## $icon Playwright Test Results`n"
+            $content += "| Total | Passed | Failed | Errors | Skipped |`n"
+            $content += "|-------|--------|--------|--------|---------|`n"
+            $content += "| $total | $passed | $failed | $errors | $skipped |`n"
             $utf8 = New-Object System.Text.UTF8Encoding $false
-            [System.IO.File]::AppendAllLines($env:GITHUB_STEP_SUMMARY, $lines, $utf8)
+            [System.IO.File]::AppendAllText($env:GITHUB_STEP_SUMMARY, $content, $utf8)
           } else {
             $utf8 = New-Object System.Text.UTF8Encoding $false
             [System.IO.File]::AppendAllText($env:GITHUB_STEP_SUMMARY, "## No se encontro el reporte JUnit en: $xml`n", $utf8)

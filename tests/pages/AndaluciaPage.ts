@@ -38,7 +38,7 @@ export class AndaluciaPage extends BasePage {
 
     this.dateDesde = page.locator('#dateDesde');
     this.dateHasta = page.locator('#dateHasta');
-    this.numeroPedido = page.locator('#input-54');
+    this.numeroPedido = page.locator('.v-input').filter({ hasText: /n[uú]mero de pedido/i }).locator('input').first();
 
     // Vuetify selects — se buscan por texto del label padre
     this.delegacion = page.locator('.v-input').filter({ hasText: 'Delegación' }).locator('input').first();

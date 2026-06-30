@@ -5,6 +5,12 @@ export const TestData = {
       password: process.env.TEST_PASSWORD || '',
     };
   },
+  get madridCredentials() {
+    return {
+      username: process.env.MADRID_USERNAME || '',
+      password: process.env.MADRID_PASSWORD || '',
+    };
+  },
   busquedas: {
     fechas: { desde: '2026-01-08', hasta: '2026-01-09' },
     totales: {
@@ -17,6 +23,19 @@ export const TestData = {
     },
     pedido:   '00865637',
     articulo: '63010001RG',
+  },
+  madrid: {
+    fechas: { desde: '2026-01-08', hasta: '2026-01-09' },
+    totales: {
+      periodicas:         37,
+      correccionDefectos: 56,
+      sinDefectos:        17,
+      leve:                0,
+      grave:              20,
+      critico:             0,
+    },
+    pedido:   '00863791',
+    articulo: '61010002RG',
   },
   urls: {
     base: process.env.BASE_URL || 'http://industriatest.ocaicp.com',

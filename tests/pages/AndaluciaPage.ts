@@ -38,8 +38,8 @@ export class AndaluciaPage extends BasePage {
   readonly noDataMessage: Locator;
   readonly rowsPerPageInput: Locator;
 
-  constructor(page: Page) {
-    super(page, '/andalucia');
+  constructor(page: Page, url = '/andalucia') {
+    super(page, url);
 
     this.dateDesde     = page.locator('#dateDesde');
     this.dateHasta     = page.locator('#dateHasta');

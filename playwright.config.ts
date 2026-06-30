@@ -4,7 +4,7 @@ require('dotenv').config();
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
-  globalSetup: './tests/global-setup.ts',
+  // globalSetup: './tests/global-setup.ts',  // storageState no funciona: app usa sesión de servidor
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -18,7 +18,6 @@ export default defineConfig({
   ],
   use: {
     baseURL: process.env.BASE_URL || 'http://industriatest.ocaicp.com',
-    storageState: '.auth/session.json',
     trace: 'off',
     screenshot: 'only-on-failure',
     video: 'off',

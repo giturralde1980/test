@@ -1,21 +1,27 @@
 import { test as base } from '@playwright/test';
+import { LoginPage } from '../pages/LoginPage';
 import { AndaluciaPage } from '../pages/AndaluciaPage';
+import { TestData } from '../helpers/test-data';
 
 type Fixtures = {
+  loginPage: LoginPage;
   andaluciaPage: AndaluciaPage;
   authenticatedPage: AndaluciaPage;
 };
 
 export const test = base.extend<Fixtures>({
+  loginPage: async ({ page }, use) => {
+    await use(new LoginPage(page));
+  },
+
   andaluciaPage: async ({ page }, use) => {
     await use(new AndaluciaPage(page));
   },
 
-  // Fixture pre-autenticado: la sesión viene del storageState (global-setup.ts)
   authenticatedPage: async ({ page }, use) => {
-    const andaluciaPage = new AndaluciaPage(page);
-    await andaluciaPage.navigate();
-    await use(andaluciaPage);
+    const loginPage = new LoginPage(page);
+    await loginPage.login(TestData.credentials.username, TestData.credentials.password);
+    await use(new AndaluciaPage(page));
   },
 });
 

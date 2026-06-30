@@ -72,8 +72,9 @@ export class AndaluciaPage extends BasePage {
     // Esperar primero a que aparezca el loader (hasta 5s), luego a que desaparezca (hasta 60s)
     // Si nunca aparece (respuesta instantánea), ambas llamadas resuelven inmediatamente
     const loader = this.page.locator('text=Pasito a pasito...');
+    const loaderTimeout = process.env.CI ? 90_000 : 60_000;
     await loader.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
-    await loader.waitFor({ state: 'hidden', timeout: 60_000 }).catch(() => {});
+    await loader.waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
   }
 
   async setDateViaCalendar(inputLocator: Locator, isoDate: string): Promise<void> {
@@ -117,7 +118,7 @@ export class AndaluciaPage extends BasePage {
       if (currentYear === year && currentMonth === month) {
         await pickerBody
           .locator('.v-date-picker-table')
-          .getByRole('button')
+          .locator('button:not([disabled]):not(.v-btn--disabled)')
           .filter({ hasText: new RegExp(`^${day}$`) })
           .click();
         await pickerBody.waitFor({ state: 'hidden', timeout: 3000 }).catch(async () => {
@@ -142,7 +143,8 @@ export class AndaluciaPage extends BasePage {
 
   async getTotalResultCount(): Promise<number> {
     // Doble seguro: si el loader sigue activo, esperarlo (servidor lento)
-    await this.page.locator('text=Pasito a pasito...').waitFor({ state: 'hidden', timeout: 60_000 }).catch(() => {});
+    const loaderTimeout = process.env.CI ? 90_000 : 60_000;
+    await this.page.locator('text=Pasito a pasito...').waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
     const noDataOrFooter = this.noDataMessage.or(this.page.locator('.v-data-footer__pagination'));
     await noDataOrFooter.first().waitFor({ state: 'visible', timeout: 15_000 });
     if (await this.noDataMessage.isVisible()) return 0;

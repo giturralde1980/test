@@ -1,5 +1,5 @@
-import { test, expect } from '../fixtures/base.fixture';
-import { TestData } from '../helpers/test-data';
+import { test, expect } from '../../../fixtures/base.fixture';
+import { TestData } from '../../../helpers/test-data';
 
 test.describe('Andalucía - Dashboard de inspecciones', () => {
   test.describe('Carga inicial', () => {

@@ -120,12 +120,14 @@ function matchScreenshots(testName, suiteName, screenshots) {
 
   for (const [folder, imgs] of Object.entries(screenshots)) {
     const folderNorm = normalize(folder);
-    // Cuenta palabras del test que aparecen en el folder (mínimo 4 chars)
-    const words = testNorm.split('-').filter(w => w.length >= 4);
+    // Cuenta tokens del test que aparecen en el folder (mínimo 2 chars).
+    // Incluir números cortos (33, 32, 6...) que son el identificador único
+    // de cada test cuando Playwright trunca el nombre de la carpeta.
+    const words = testNorm.split('-').filter(w => w.length >= 2);
     const score = words.filter(w => folderNorm.includes(w)).length;
     if (score > bestScore) { bestScore = score; best = imgs; }
   }
-  return bestScore >= 2 ? best : null;
+  return bestScore >= 3 ? best : null;
 }
 
 // ── Generar HTML ──────────────────────────────────────────────────────────────

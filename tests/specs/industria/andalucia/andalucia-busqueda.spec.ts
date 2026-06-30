@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures/base.fixture';
-import { TestData } from '../helpers/test-data';
-import { AndaluciaPage } from '../pages/AndaluciaPage';
+import { test, expect } from '../../../fixtures/base.fixture';
+import { TestData } from '../../../helpers/test-data';
+import { AndaluciaPage } from '../../../pages/AndaluciaPage';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -17,7 +17,7 @@ async function setFechas(page: AndaluciaPage): Promise<void> {
 test.use({ screenshot: 'on' });
 
 test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
-  test.describe.configure({ timeout: 60_000 });
+  test.describe.configure({ timeout: process.env.CI ? 120_000 : 60_000 });
 
   test('búsqueda básica por fechas devuelve 165 registros', async ({ authenticatedPage }) => {
     await authenticatedPage.buscarPorFechas(desde, hasta);

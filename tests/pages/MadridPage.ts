@@ -4,6 +4,7 @@ import { AndaluciaPage } from './AndaluciaPage';
 export class MadridPage extends AndaluciaPage {
   readonly btnPeriodicas: Locator;
   readonly btnCorreccionDefectos: Locator;
+  readonly btnGenerarDbf: Locator;
 
   constructor(page: Page) {
     super(page, '/madrid');
@@ -18,6 +19,7 @@ export class MadridPage extends AndaluciaPage {
 
     this.btnPeriodicas         = page.locator('button').filter({ hasText: /^Periódicas$/ });
     this.btnCorreccionDefectos = page.locator('button').filter({ hasText: /^Corrección de defectos$/ });
+    this.btnGenerarDbf         = page.locator('button').filter({ hasText: /generar dbf/i });
   }
 
   async isPeriodicas(): Promise<boolean> {

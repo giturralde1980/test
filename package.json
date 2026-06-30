@@ -23,7 +23,9 @@
   "type": "commonjs",
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^25.9.1",
+    "adm-zip": "^0.5.18",
     "allure-commandline": "^2.43.0",
     "allure-playwright": "^3.10.2",
     "cross-env": "^10.1.0",

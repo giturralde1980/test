@@ -1,6 +1,11 @@
 import { test, expect } from '../../../fixtures/base.fixture';
 import { TestData } from '../../../helpers/test-data';
 import { MadridPage } from '../../../pages/MadridPage';
+import { mkdirSync } from 'fs';
+import { join } from 'path';
+import AdmZip from 'adm-zip';
+
+const DOWNLOADS_DIR = join(process.cwd(), 'reports', 'downloads');
 
 const { desde, hasta } = TestData.madrid.fechas;
 const totales = TestData.madrid.totales;
@@ -71,6 +76,46 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     await authenticatedMadridPage.setArticulo(TestData.madrid.articulo);
     await authenticatedMadridPage.buscar();
     expect(await authenticatedMadridPage.getTotalResultCount()).toBeGreaterThan(0);
+  });
+
+  test('Generar DBF descarga ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación', async ({ authenticatedMadridPage, page }) => {
+    await authenticatedMadridPage.buscarPorFechas(desde, hasta);
+
+    // Obtener el Cod. Instalacion de la primera fila antes de seleccionarla
+    const codInstalacion = await page.evaluate(() => {
+      const ths = Array.from(document.querySelectorAll('th'));
+      const idx = ths.findIndex(th => (th as HTMLElement).innerText.trim() === 'Cod. Instalacion');
+      if (idx === -1) return '';
+      const tds = Array.from(document.querySelectorAll('tbody tr:first-child td'));
+      return (tds[idx] as HTMLElement)?.innerText.trim() ?? '';
+    });
+    expect(codInstalacion, 'no se encontró el código de instalación en la tabla').not.toBe('');
+
+    await authenticatedMadridPage.selectTableRow(0);
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      authenticatedMadridPage.btnGenerarDbf.click(),
+    ]);
+
+    const zipName = download.suggestedFilename();
+    expect(zipName, 'nombre del ZIP inesperado').toMatch(/^lote_\d+\.zip$/i);
+
+    mkdirSync(DOWNLOADS_DIR, { recursive: true });
+    const zipPath = join(DOWNLOADS_DIR, zipName);
+    await download.saveAs(zipPath);
+
+    // Verificar contenido del ZIP: debe incluir certificadoFirmado_ y CertificadoSellado_
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries().map(e => e.entryName);
+
+    const firmado = entries.find(n => /certificadoFirmado_/i.test(n));
+    const sellado = entries.find(n => /CertificadoSellado_/i.test(n));
+
+    expect(firmado,  `falta certificadoFirmado_ en el ZIP. Entradas: ${entries}`).toBeTruthy();
+    expect(sellado,  `falta CertificadoSellado_ en el ZIP. Entradas: ${entries}`).toBeTruthy();
+    expect(firmado).toContain(codInstalacion);
+    expect(sellado).toContain(codInstalacion);
   });
 
 });

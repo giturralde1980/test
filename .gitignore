@@ -5,3 +5,4 @@ reports/
 playwright-report/
 test-results/
 allure-results/
+.auth/

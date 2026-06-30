@@ -143,40 +143,24 @@ function badge(status) {
   return `<span style="background:${c.bg};color:${c.text};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;white-space:nowrap">${c.label}</span>`;
 }
 
-function generateHtml(suites, env, screenshots) {
-  const now       = new Date();
-  const dateStr   = now.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
-  const timeStr   = now.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-
-  const totalTests  = suites.reduce((a, s) => a + s.tests, 0);
-  const totalFail   = suites.reduce((a, s) => a + s.failures + s.errors, 0);
-  const totalSkip   = suites.reduce((a, s) => a + s.skipped, 0);
-  const totalPassed = totalTests - totalFail - totalSkip;
-  const totalTime   = suites.reduce((a, s) => a + s.time, 0);
-  const pct         = totalTests > 0 ? Math.round((totalPassed / totalTests) * 100) : 0;
-  const pctColor    = pct === 100 ? '#22c55e' : pct >= 80 ? '#f97316' : '#ef4444';
-
-  const envRows = Object.entries(env).map(([k, v]) =>
-    `<tr><td style="padding:4px 12px 4px 0;color:#64748b;font-size:13px">${k}</td><td style="padding:4px 0;font-size:13px;font-weight:500">${v}</td></tr>`
-  ).join('');
-
-  const suiteBlocks = suites.map(suite => {
+function renderSuiteBlocks(suites, screenshots) {
+  return suites.map(suite => {
     const specName = suite.name
       .replace(/tests[\\/]specs[\\/]/gi, '')
       .replace(/tests[\\/]utils[\\/]/gi, 'utils/')
       .replace(/\.spec\.ts$/i, '');
 
-    const suiteFail = suite.failures + suite.errors;
-    const headerBg  = suiteFail > 0 ? '#fef2f2' : '#f0fdf4';
+    const suiteFail   = suite.failures + suite.errors;
+    const headerBg    = suiteFail > 0 ? '#fef2f2' : '#f0fdf4';
     const headerBorder = suiteFail > 0 ? '#fca5a5' : '#86efac';
 
     const rows = suite.cases.map(tc => {
       const imgs    = matchScreenshots(tc.name, suite.name, screenshots);
-      const imgHtml = imgs ? imgs.map((b64, i) => {
+      const imgHtml = imgs ? imgs.map(() => {
         const id = `img-${Math.random().toString(36).slice(2)}`;
         return `
           <div style="margin-top:8px">
-            <img id="${id}" src="data:image/png;base64,${b64}"
+            <img id="${id}" src="data:image/png;base64,${imgs[0]}"
               style="max-width:100%;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;max-height:120px;object-fit:contain"
               onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"
               title="Click para ampliar"/>
@@ -199,7 +183,7 @@ function generateHtml(suites, env, screenshots) {
     }).join('');
 
     return `
-      <div style="margin-bottom:28px;border:1px solid ${headerBorder};border-radius:8px;overflow:hidden">
+      <div style="margin-bottom:16px;border:1px solid ${headerBorder};border-radius:8px;overflow:hidden">
         <div style="background:${headerBg};padding:10px 16px;border-bottom:1px solid ${headerBorder};display:flex;justify-content:space-between;align-items:center">
           <span style="font-weight:600;font-size:14px;color:#1e293b">${escHtml(specName)}</span>
           <span style="font-size:12px;color:#64748b">${suite.tests} tests · ${fmtTime(suite.time)}</span>
@@ -207,6 +191,62 @@ function generateHtml(suites, env, screenshots) {
         <table style="width:100%;border-collapse:collapse">${rows}</table>
       </div>`;
   }).join('');
+}
+
+function renderSection(title, accentColor, suites, screenshots) {
+  if (suites.length === 0) return '';
+
+  const total   = suites.reduce((a, s) => a + s.tests, 0);
+  const fail    = suites.reduce((a, s) => a + s.failures + s.errors, 0);
+  const skip    = suites.reduce((a, s) => a + s.skipped, 0);
+  const passed  = total - fail - skip;
+  const time    = suites.reduce((a, s) => a + s.time, 0);
+  const pct     = total > 0 ? Math.round((passed / total) * 100) : 0;
+  const pctCol  = pct === 100 ? '#22c55e' : pct >= 80 ? '#f97316' : '#ef4444';
+  const pillBg  = fail > 0 ? '#fef2f2' : '#f0fdf4';
+  const pillBorder = fail > 0 ? '#fca5a5' : '#86efac';
+
+  return `
+    <div style="margin-bottom:36px">
+      <!-- Section header -->
+      <div style="background:${accentColor};border-radius:8px;padding:14px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <span style="color:#fff;font-size:16px;font-weight:700;letter-spacing:.02em">${escHtml(title)}</span>
+        <div style="display:flex;gap:16px;align-items:center">
+          <span style="color:rgba(255,255,255,.85);font-size:13px">${total} tests · ${fmtTime(time)}</span>
+          <span style="background:rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px">${pct}% OK</span>
+        </div>
+      </div>
+      <!-- Mini stats row -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        ${miniCard('Total', total, '#3b82f6')}
+        ${miniCard('Pasaron', passed, '#22c55e')}
+        ${miniCard('Fallaron', fail, fail > 0 ? '#ef4444' : '#94a3b8')}
+        ${miniCard('Duración', fmtTime(time), '#8b5cf6', true)}
+      </div>
+      <!-- Suite blocks -->
+      ${renderSuiteBlocks(suites, screenshots)}
+    </div>`;
+}
+
+function generateHtml(suites, env, screenshots) {
+  const now       = new Date();
+  const dateStr   = now.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const timeStr   = now.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+
+  const totalTests  = suites.reduce((a, s) => a + s.tests, 0);
+  const totalFail   = suites.reduce((a, s) => a + s.failures + s.errors, 0);
+  const totalSkip   = suites.reduce((a, s) => a + s.skipped, 0);
+  const totalPassed = totalTests - totalFail - totalSkip;
+  const totalTime   = suites.reduce((a, s) => a + s.time, 0);
+  const pct         = totalTests > 0 ? Math.round((totalPassed / totalTests) * 100) : 0;
+  const pctColor    = pct === 100 ? '#22c55e' : pct >= 80 ? '#f97316' : '#ef4444';
+
+  const envRows = Object.entries(env).map(([k, v]) =>
+    `<tr><td style="padding:4px 12px 4px 0;color:#64748b;font-size:13px">${k}</td><td style="padding:4px 0;font-size:13px;font-weight:500">${v}</td></tr>`
+  ).join('');
+
+  const andaluciaSuites = suites.filter(s => /andalucia/i.test(s.name));
+  const madridSuites    = suites.filter(s => /madrid/i.test(s.name));
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -238,8 +278,8 @@ function generateHtml(suites, env, screenshots) {
       </div>
     </div>
 
-    <!-- SUMMARY CARDS -->
-    <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+    <!-- GLOBAL SUMMARY CARDS -->
+    <div style="display:flex;gap:12px;margin-bottom:32px;flex-wrap:wrap">
       ${card('Total', totalTests, '#3b82f6')}
       ${card('Pasaron', totalPassed, '#22c55e')}
       ${card('Fallaron', totalFail, totalFail > 0 ? '#ef4444' : '#94a3b8')}
@@ -249,17 +289,19 @@ function generateHtml(suites, env, screenshots) {
 
     <!-- ENVIRONMENT -->
     ${envRows ? `
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:32px">
       <div style="font-weight:600;font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Entorno</div>
       <table>${envRows}</table>
     </div>` : ''}
 
-    <!-- SUITE BLOCKS -->
-    <div style="font-weight:600;font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Resultados por spec</div>
-    ${suiteBlocks}
+    <!-- ANDALUCÍA -->
+    ${renderSection('Andalucía', '#1d6b44', andaluciaSuites, screenshots)}
+
+    <!-- MADRID -->
+    ${renderSection('Madrid', '#7c2020', madridSuites, screenshots)}
 
     <div class="no-print" style="text-align:center;margin-top:32px;font-size:12px;color:#94a3b8">
-      Generado por <strong>generate-summary.js</strong> · Playwright + Allure
+      Generado por <strong>generate-summary.js</strong> · Playwright
     </div>
   </div>
 </body>
@@ -271,6 +313,14 @@ function card(label, value, color, isText = false) {
     <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;text-align:center">
       <div style="font-size:${isText ? '22px' : '28px'};font-weight:700;color:${color}">${value}</div>
       <div style="font-size:12px;color:#64748b;margin-top:4px">${label}</div>
+    </div>`;
+}
+
+function miniCard(label, value, color, isText = false) {
+  return `
+    <div style="flex:1;min-width:90px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;text-align:center">
+      <div style="font-size:${isText ? '16px' : '22px'};font-weight:700;color:${color}">${value}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">${label}</div>
     </div>`;
 }
 

@@ -287,7 +287,7 @@ if (!fs.existsSync(XML_FILE)) {
 
 const xml         = fs.readFileSync(XML_FILE, 'utf8');
 const allSuites   = parseJUnit(xml);
-const suites      = allSuites.filter(s => /busqueda/i.test(s.name));
+const suites      = allSuites.filter(s => /industria/i.test(s.name));
 const env         = readEnv();
 const screenshots = findScreenshots();
 const html        = generateHtml(suites, env, screenshots);

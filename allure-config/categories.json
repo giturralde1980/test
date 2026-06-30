@@ -1,0 +1,31 @@
+[
+  {
+    "name": "Bug confirmado",
+    "description": "Assertion falló — la app no devuelve el valor esperado.",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*[Ee]xpect.*[Tt]o[Bb]e.*|.*Expected.*Received.*|.*toBe.*|.*toEqual.*"
+  },
+  {
+    "name": "Test flaky / web lenta",
+    "description": "Timeout o elemento no estable — posiblemente intermitente por lentitud del servidor.",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*[Tt]imeout.*|.*exceeded.*|.*not visible.*|.*not stable.*",
+    "flaky": true
+  },
+  {
+    "name": "Selector roto",
+    "description": "El locator no resolvió nada o resolvió varios — posible cambio en el DOM de la app.",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*strict mode violation.*|.*locator.*resolved to.*|.*no element.*|.*not found.*"
+  },
+  {
+    "name": "Error inesperado",
+    "description": "Excepción no categorizada — revisar manualmente.",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*"
+  },
+  {
+    "name": "Tests omitidos",
+    "matchedStatuses": ["skipped"]
+  }
+]

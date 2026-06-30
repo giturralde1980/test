@@ -5,6 +5,19 @@ export const TestData = {
       password: process.env.TEST_PASSWORD || '',
     };
   },
+  busquedas: {
+    fechas: { desde: '2026-01-08', hasta: '2026-01-09' },
+    totales: {
+      porFechas:    165,
+      sinDefectos:  100,
+      leve:          33,
+      grave:         32,
+      critico:        0,
+      articulo:       6,
+    },
+    pedido:   '00865637',
+    articulo: '63010001RG',
+  },
   urls: {
     base: process.env.BASE_URL || 'http://industriatest.ocaicp.com',
     login: '/',

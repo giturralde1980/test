@@ -11,6 +11,7 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: 'reports/html', open: 'never' }],
     ['junit', { outputFile: 'reports/junit/results.xml' }],
+    ['allure-playwright'],
     ['list'],
   ],
   use: {

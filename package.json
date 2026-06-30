@@ -9,6 +9,8 @@
     "test:ui": "playwright test --ui",
     "test:debug": "cross-env HEADLESS=false playwright test --debug",
     "report": "playwright show-report reports/html",
+    "summary": "node scripts/generate-summary.js",
+    "allure:report": "node scripts/allure-setup.js && npx allure generate allure-results --clean -o reports/allure-html && npx allure open reports/allure-html",
     "report:summary": "xunit-viewer -r reports/junit/results.xml -o reports/summary.html && start reports/summary.html",
     "test:full": "playwright test && npm run report:summary",
     "test:full:headed": "cross-env HEADLESS=false playwright test && npm run report:summary",
@@ -22,6 +24,8 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
+    "allure-commandline": "^2.43.0",
+    "allure-playwright": "^3.10.2",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "ts-node": "^10.9.2",

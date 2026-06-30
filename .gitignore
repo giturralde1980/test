@@ -4,3 +4,4 @@ reports/
 .env
 playwright-report/
 test-results/
+allure-results/

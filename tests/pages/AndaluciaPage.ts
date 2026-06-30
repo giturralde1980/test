@@ -1,10 +1,15 @@
 import { Page, Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
 export class AndaluciaPage extends BasePage {
-  // Filtros de fecha
+  // Filtros de fecha — input (para asserts) y slot (para abrir el picker)
   readonly dateDesde: Locator;
   readonly dateHasta: Locator;
+  readonly dateDesdeSlot: Locator;
+  readonly dateHastaSlot: Locator;
 
   // Filtros de texto/select
   // Nota: los IDs input-XX son generados por Vuetify y pueden cambiar;
@@ -36,8 +41,10 @@ export class AndaluciaPage extends BasePage {
   constructor(page: Page) {
     super(page, '/andalucia');
 
-    this.dateDesde = page.locator('#dateDesde');
-    this.dateHasta = page.locator('#dateHasta');
+    this.dateDesde     = page.locator('#dateDesde');
+    this.dateHasta     = page.locator('#dateHasta');
+    this.dateDesdeSlot = page.locator('.v-input__slot:has(#dateDesde)');
+    this.dateHastaSlot = page.locator('.v-input__slot:has(#dateHasta)');
     this.numeroPedido = page.locator('.v-input').filter({ hasText: /n[uú]mero de pedido/i }).locator('input').first();
 
     // Vuetify selects — se buscan por texto del label padre
@@ -62,7 +69,100 @@ export class AndaluciaPage extends BasePage {
 
   async buscar(): Promise<void> {
     await this.btnBuscar.click();
-    await this.page.waitForLoadState('networkidle');
+    // Esperar primero a que aparezca el loader (hasta 5s), luego a que desaparezca (hasta 60s)
+    // Si nunca aparece (respuesta instantánea), ambas llamadas resuelven inmediatamente
+    const loader = this.page.locator('text=Pasito a pasito...');
+    await loader.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+    await loader.waitFor({ state: 'hidden', timeout: 60_000 }).catch(() => {});
+  }
+
+  async setDateViaCalendar(inputLocator: Locator, isoDate: string): Promise<void> {
+    // Esperar que la página esté interactiva antes de tocar los date pickers
+    await this.page.waitForLoadState('domcontentloaded');
+    // La secuencia que abre el picker: primero foco en el input, luego click en el slot
+    const slotLocator = inputLocator === this.dateDesde ? this.dateDesdeSlot : this.dateHastaSlot;
+    await inputLocator.click();
+    await slotLocator.click();
+
+    // Puede haber dos .v-picker__body en el DOM (uno por campo de fecha).
+    // Buscamos el que se vuelve visible tras el click.
+    const allBodies = this.page.locator('.v-picker__body');
+    let pickerBody!: Locator;
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const n = await allBodies.count();
+      for (let i = 0; i < n; i++) {
+        if (await allBodies.nth(i).isVisible()) {
+          pickerBody = allBodies.nth(i);
+          break;
+        }
+      }
+      if (pickerBody) break;
+      await this.page.waitForTimeout(200);
+    }
+    if (!pickerBody) throw new Error('El date picker no se abrió');
+
+    const [year, month, day] = isoDate.split('-').map(Number);
+
+    for (let attempt = 0; attempt < 24; attempt++) {
+      // Leer mes y año de la cabecera: ej. "enero de 2026"
+      const headerText = await pickerBody
+        .locator('.v-date-picker-header__value button')
+        .first()
+        .innerText();
+      const [mesStr, yearStr] = headerText.toLowerCase().trim().split(' de ');
+      const currentMonth = MESES.indexOf(mesStr) + 1;
+      const currentYear = parseInt(yearStr, 10);
+
+      if (currentYear === year && currentMonth === month) {
+        await pickerBody
+          .locator('.v-date-picker-table')
+          .getByRole('button')
+          .filter({ hasText: new RegExp(`^${day}$`) })
+          .click();
+        await pickerBody.waitFor({ state: 'hidden', timeout: 3000 }).catch(async () => {
+          await this.page.keyboard.press('Escape');
+        });
+        return;
+      }
+
+      const diff = (year * 12 + month) - (currentYear * 12 + currentMonth);
+      const ariaLabel = diff < 0 ? 'Previous month' : 'Next month';
+      await pickerBody.locator(`button[aria-label="${ariaLabel}"]`).click();
+      await this.page.waitForTimeout(300);
+    }
+    throw new Error(`No se pudo navegar al día ${isoDate} en el date picker`);
+  }
+
+  async buscarPorFechas(desde: string, hasta: string): Promise<void> {
+    await this.setDateViaCalendar(this.dateDesde, desde);
+    await this.setDateViaCalendar(this.dateHasta, hasta);
+    await this.buscar();
+  }
+
+  async getTotalResultCount(): Promise<number> {
+    // Doble seguro: si el loader sigue activo, esperarlo (servidor lento)
+    await this.page.locator('text=Pasito a pasito...').waitFor({ state: 'hidden', timeout: 60_000 }).catch(() => {});
+    const noDataOrFooter = this.noDataMessage.or(this.page.locator('.v-data-footer__pagination'));
+    await noDataOrFooter.first().waitFor({ state: 'visible', timeout: 15_000 });
+    if (await this.noDataMessage.isVisible()) return 0;
+    const text = await this.page.locator('.v-data-footer__pagination').innerText();
+    const match = text.match(/of (\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  }
+
+  async setArticulo(value: string): Promise<void> {
+    // Click slot para abrir el autocomplete (el input interno está oculto hasta abrir)
+    await this.articulos.locator('.v-input__slot').click();
+    const input = this.articulos.locator('input').first();
+    await input.fill(value);
+    await this.page.waitForTimeout(400);
+    const option = this.page.locator('.menuable__content__active .v-list-item__title').filter({ hasText: value });
+    if (await option.count() > 0) await option.click();
+  }
+
+  async selectTableRow(index = 0): Promise<void> {
+    await this.page.locator('tbody .v-input--selection-controls__input').nth(index).click();
   }
 
   async salir(): Promise<void> {

@@ -54,6 +54,18 @@ export const TestData = {
     'Estado Inspeccion',
     'Estado Tramitacion',
   ],
+  madridTableHeaders: [
+    'Pedido',
+    'Línea',
+    'Nº Envío',
+    'Nº Certificado',
+    'Fecha Inspección',
+    'Resultado',
+    'Articulo',
+    'Cod. Instalacion',
+    'Dir. Instalacion',
+    'Estado',
+  ],
   resultFilters: ['SIN DEFECTOS', 'LEVE A REPARAR', 'GRAVE', 'CRÍTICO'],
   timeouts: {
     short: 5_000,

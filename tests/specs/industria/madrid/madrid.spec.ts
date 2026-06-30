@@ -86,7 +86,7 @@ test.describe('Madrid - Dashboard de inspecciones', () => {
 
     test('la tabla muestra las columnas correctas', async ({ authenticatedMadridPage }) => {
       const headers = await authenticatedMadridPage.getTableHeaders();
-      for (const expected of TestData.tableHeaders) {
+      for (const expected of TestData.madridTableHeaders) {
         expect(headers).toContain(expected);
       }
     });

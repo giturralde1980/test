@@ -30,12 +30,19 @@ jobs:
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
           HEADLESS: true
 
+      - name: Generate summary
+        if: always()
+        run: npm run summary
+        shell: cmd
+
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: reports/
+          path: |
+            reports/summary.html
+            reports/downloads/
           retention-days: 7
 
       - name: Summary

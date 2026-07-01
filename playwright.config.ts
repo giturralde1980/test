@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 require('dotenv').config();
+
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
@@ -8,13 +9,14 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  workers: 1,
   timeout: process.env.CI ? 120_000 : 30_000,
   reporter: [
     ['html', { outputFolder: 'reports/html', open: 'never' }],
     ['junit', { outputFile: 'reports/junit/results.xml' }],
     // ['allure-playwright'],
     ['list'],
+    ['./reporters/testrail.reporter.ts'],
   ],
   use: {
     baseURL: process.env.BASE_URL || 'http://industriatest.ocaicp.com',

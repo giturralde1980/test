@@ -120,6 +120,7 @@ export class AndaluciaPage extends BasePage {
           .locator('.v-date-picker-table')
           .locator('button:not([disabled]):not(.v-btn--disabled)')
           .filter({ hasText: new RegExp(`^${day}$`) })
+          .first()
           .click();
         await pickerBody.waitFor({ state: 'hidden', timeout: 3000 }).catch(async () => {
           await this.page.keyboard.press('Escape');
@@ -136,17 +137,29 @@ export class AndaluciaPage extends BasePage {
   }
 
   async buscarPorFechas(desde: string, hasta: string): Promise<void> {
+    await this.btnBuscar.waitFor({ state: 'visible' });
     await this.setDateViaCalendar(this.dateDesde, desde);
     await this.setDateViaCalendar(this.dateHasta, hasta);
     await this.buscar();
   }
 
   async getTotalResultCount(): Promise<number> {
-    // Doble seguro: si el loader sigue activo, esperarlo (servidor lento)
     const loaderTimeout = process.env.CI ? 90_000 : 60_000;
     await this.page.locator('text=Pasito a pasito...').waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
     const noDataOrFooter = this.noDataMessage.or(this.page.locator('.v-data-footer__pagination'));
     await noDataOrFooter.first().waitFor({ state: 'visible', timeout: 15_000 });
+
+    // Poll hasta 25s si el servidor devuelve 0 sin mensaje "No data" (cold-start)
+    const deadline = Date.now() + 25_000;
+    while (Date.now() < deadline) {
+      if (await this.noDataMessage.isVisible()) return 0;
+      const text = await this.page.locator('.v-data-footer__pagination').innerText();
+      const match = text.match(/of (\d+)/);
+      const count = match ? parseInt(match[1], 10) : 0;
+      if (count > 0) return count;
+      await this.page.waitForTimeout(500);
+    }
+
     if (await this.noDataMessage.isVisible()) return 0;
     const text = await this.page.locator('.v-data-footer__pagination').innerText();
     const match = text.match(/of (\d+)/);

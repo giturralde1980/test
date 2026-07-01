@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Verificar que la búsqueda básica por fechas con Periódicas activo devuelve 37 registros",
+    "caseId": 250
+  },
+  {
+    "title": "Verificar que el filtro Corrección de Defectos + fechas devuelve 56 registros",
+    "caseId": 251
+  },
+  {
+    "title": "Verificar que el filtro Sin Defectos + fechas devuelve 17 registros",
+    "caseId": 252
+  },
+  {
+    "title": "Verificar que el filtro Leve a Reparar + fechas devuelve 0 registros y la tabla aparece vacía",
+    "caseId": 253
+  },
+  {
+    "title": "Verificar que el filtro Grave + fechas devuelve 20 registros",
+    "caseId": 254
+  },
+  {
+    "title": "Verificar que el filtro Crítico + fechas devuelve 0 registros y la tabla aparece vacía",
+    "caseId": 255
+  },
+  {
+    "title": "Verificar que la búsqueda por número de pedido + fechas devuelve resultados que incluyen ese pedido",
+    "caseId": 256
+  },
+  {
+    "title": "Verificar que la búsqueda por artículo + fechas devuelve resultados",
+    "caseId": 257
+  },
+  {
+    "title": "Verificar que Generar DBF descarga un ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación",
+    "caseId": 258
+  }
+]

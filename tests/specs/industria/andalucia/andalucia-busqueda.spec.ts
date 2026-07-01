@@ -10,6 +10,7 @@ const { desde, hasta } = TestData.busquedas.fechas;
 const totales = TestData.busquedas.totales;
 
 async function setFechas(page: AndaluciaPage): Promise<void> {
+  await page.btnBuscar.waitFor({ state: 'visible' });
   await page.setDateViaCalendar(page.dateDesde, desde);
   await page.setDateViaCalendar(page.dateHasta, hasta);
 }
@@ -30,33 +31,38 @@ test.use({ screenshot: 'on' });
 test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   test.describe.configure({ timeout: process.env.CI ? 120_000 : 60_000 });
 
-  test('búsqueda básica por fechas devuelve 165 registros', async ({ authenticatedPage }) => {
+  test('Verificar que la búsqueda por fechas 08-09 ene 2026 devuelve 165 registros', async ({ authenticatedPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C46' });
     await authenticatedPage.buscarPorFechas(desde, hasta);
     expect(await authenticatedPage.getTotalResultCount()).toBe(totales.porFechas);
   });
 
-  test('filtro SIN DEFECTOS + fechas devuelve 100 registros', async ({ authenticatedPage }) => {
+  test('Verificar que el filtro Sin Defectos + fechas devuelve 100 registros', async ({ authenticatedPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C47' });
     await setFechas(authenticatedPage);
     await authenticatedPage.btnSinDefectos.click();
     await authenticatedPage.buscar();
     expect(await authenticatedPage.getTotalResultCount()).toBe(totales.sinDefectos);
   });
 
-  test('filtro LEVE A REPARAR + fechas devuelve 33 registros', async ({ authenticatedPage }) => {
+  test('Verificar que el filtro Leve a Reparar + fechas devuelve 33 registros', async ({ authenticatedPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C48' });
     await setFechas(authenticatedPage);
     await authenticatedPage.btnLeveAReparar.click();
     await authenticatedPage.buscar();
     expect(await authenticatedPage.getTotalResultCount()).toBe(totales.leve);
   });
 
-  test('filtro GRAVE + fechas devuelve 32 registros', async ({ authenticatedPage }) => {
+  test('Verificar que el filtro Grave + fechas devuelve 32 registros', async ({ authenticatedPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C49' });
     await setFechas(authenticatedPage);
     await authenticatedPage.btnGrave.click();
     await authenticatedPage.buscar();
     expect(await authenticatedPage.getTotalResultCount()).toBe(totales.grave);
   });
 
-  test('filtro CRÍTICO + fechas devuelve 0 registros y muestra mensaje vacío', async ({ authenticatedPage }) => {
+  test('Verificar que el filtro Crítico + fechas devuelve 0 registros y la tabla aparece vacía', async ({ authenticatedPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C50' });
     await setFechas(authenticatedPage);
     await authenticatedPage.btnCritico.click();
     await authenticatedPage.buscar();
@@ -64,7 +70,8 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
     await expect(authenticatedPage.noDataMessage).toBeVisible();
   });
 
-  test('búsqueda por número de pedido + fechas devuelve resultados que incluyen ese pedido', async ({ authenticatedPage, page }) => {
+  test('Verificar que la búsqueda por número de pedido + fechas devuelve resultados que incluyen ese pedido', async ({ authenticatedPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C51' });
     await setFechas(authenticatedPage);
     await authenticatedPage.numeroPedido.fill(TestData.busquedas.pedido);
     await authenticatedPage.buscar();
@@ -72,14 +79,16 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
     await expect(page.locator('tbody').getByText(TestData.busquedas.pedido).first()).toBeVisible();
   });
 
-  test('búsqueda por artículo + fechas devuelve 6 registros', async ({ authenticatedPage }) => {
+  test('Verificar que la búsqueda por artículo + fechas devuelve 6 registros', async ({ authenticatedPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C52' });
     await setFechas(authenticatedPage);
     await authenticatedPage.setArticulo(TestData.busquedas.articulo);
     await authenticatedPage.buscar();
     expect(await authenticatedPage.getTotalResultCount()).toBe(totales.articulo);
   });
 
-  test('seleccionar una inspección y generar XML descarga un fichero .xml', async ({ authenticatedPage, page }) => {
+  test('Verificar que al generar XML se descarga un fichero SIOCA_YYYYMMDD_HHMMSS.xml', async ({ authenticatedPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C53' });
     await authenticatedPage.buscarPorFechas(desde, hasta);
     await authenticatedPage.selectTableRow(0);
 
@@ -95,8 +104,8 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
     await download.saveAs(join(DOWNLOADS_DIR, filename));
   });
 
-  test('XML generado tiene estructura y contenido válidos', async ({ authenticatedPage, page }) => {
-    // Descargar XML
+  test('Verificar que el XML generado tiene estructura y contenido válidos', async ({ authenticatedPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C54' });
     await authenticatedPage.buscarPorFechas(desde, hasta);
     await authenticatedPage.selectTableRow(0);
 
@@ -129,20 +138,15 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
     expect(xmlHas(xml, 'numero_documentacion'), 'falta <numero_documentacion>').toBe(true);
 
     // ── 2. Contenido ─────────────────────────────────────────────────────────
-
-    // tipo es ALTA o RESULTADO
     const tipo = xmlValue(xml, 'tipo');
     expect(['ALTA', 'RESULTADO'], `<tipo> inválido: "${tipo}"`).toContain(tipo);
 
-    // certificado no vacío
     const certificado = xmlValue(xml, 'certificado');
     expect(certificado, '<certificado> vacío').not.toBe('');
 
-    // fecha en formato DD/MM/YYYY
     const fecha = xmlValue(xml, 'fecha');
     expect(fecha, `<fecha> no tiene formato DD/MM/YYYY: "${fecha}"`).toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
 
-    // fecha dentro del rango de búsqueda (08/01/2026 – 09/01/2026)
     const [d, m, y] = fecha.split('/').map(Number);
     const fechaDate  = new Date(y, m - 1, d);
     const desdeDate  = new Date(2026, 0, 8);
@@ -150,19 +154,16 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
     expect(fechaDate.getTime(), `<fecha> ${fecha} fuera del rango de búsqueda`).toBeGreaterThanOrEqual(desdeDate.getTime());
     expect(fechaDate.getTime(), `<fecha> ${fecha} fuera del rango de búsqueda`).toBeLessThanOrEqual(hastaDate.getTime());
 
-    // duración es un número >= 0
     const duracion = parseInt(xmlValue(xml, 'duracion'), 10);
     expect(Number.isNaN(duracion), '<duracion> no es un número').toBe(false);
     expect(duracion, '<duracion> negativa').toBeGreaterThanOrEqual(0);
 
-    // titular: nombre y número de documentación no vacíos
     const nombreTitular = xmlValue(xml, 'nombre');
     expect(nombreTitular, '<titular><nombre> vacío').not.toBe('');
 
     const numDoc = xmlValue(xml, 'numero_documentacion');
     expect(numDoc, '<numero_documentacion> vacío').not.toBe('');
 
-    // tipo_documentacion es un valor reconocido
     const tipoDoc = xmlValue(xml, 'tipo_documentacion');
     expect(['CIF', 'NIF', 'NIE', 'PASAPORTE'], `<tipo_documentacion> desconocido: "${tipoDoc}"`).toContain(tipoDoc);
   });

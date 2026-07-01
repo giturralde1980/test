@@ -11,6 +11,7 @@ const { desde, hasta } = TestData.madrid.fechas;
 const totales = TestData.madrid.totales;
 
 async function setFechas(page: MadridPage): Promise<void> {
+  await page.btnBuscar.waitFor({ state: 'visible' });
   await page.setDateViaCalendar(page.dateDesde, desde);
   await page.setDateViaCalendar(page.dateHasta, hasta);
 }
@@ -18,29 +19,33 @@ async function setFechas(page: MadridPage): Promise<void> {
 test.use({ screenshot: 'on' });
 
 test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
-  test.describe.configure({ timeout: process.env.CI ? 120_000 : 60_000 });
+  test.describe.configure({ timeout: process.env.CI ? 120_000 : 90_000 });
 
-  test('búsqueda básica por fechas (Periódicas activo por defecto) devuelve 37 registros', async ({ authenticatedMadridPage }) => {
+  test('Verificar que la búsqueda básica por fechas con Periódicas activo devuelve 37 registros', async ({ authenticatedMadridPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C250' });
     await expect(authenticatedMadridPage.btnPeriodicas).toHaveClass(/v-btn--active/);
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
     expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.periodicas);
   });
 
-  test('filtro Corrección de defectos + fechas devuelve 56 registros', async ({ authenticatedMadridPage }) => {
+  test('Verificar que el filtro Corrección de Defectos + fechas devuelve 56 registros', async ({ authenticatedMadridPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C251' });
     await authenticatedMadridPage.btnCorreccionDefectos.click();
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.buscar();
     expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.correccionDefectos);
   });
 
-  test('filtro SIN DEFECTOS + fechas devuelve 17 registros', async ({ authenticatedMadridPage }) => {
+  test('Verificar que el filtro Sin Defectos + fechas devuelve 17 registros', async ({ authenticatedMadridPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C252' });
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.btnSinDefectos.click();
     await authenticatedMadridPage.buscar();
     expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.sinDefectos);
   });
 
-  test('filtro LEVE A REPARAR + fechas devuelve 0 registros y muestra mensaje vacío', async ({ authenticatedMadridPage }) => {
+  test('Verificar que el filtro Leve a Reparar + fechas devuelve 0 registros y la tabla aparece vacía', async ({ authenticatedMadridPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C253' });
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.btnLeveAReparar.click();
     await authenticatedMadridPage.buscar();
@@ -48,14 +53,16 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     await expect(authenticatedMadridPage.noDataMessage).toBeVisible();
   });
 
-  test('filtro GRAVE + fechas devuelve 20 registros', async ({ authenticatedMadridPage }) => {
+  test('Verificar que el filtro Grave + fechas devuelve 20 registros', async ({ authenticatedMadridPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C254' });
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.btnGrave.click();
     await authenticatedMadridPage.buscar();
     expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.grave);
   });
 
-  test('filtro CRÍTICO + fechas devuelve 0 registros y muestra mensaje vacío', async ({ authenticatedMadridPage }) => {
+  test('Verificar que el filtro Crítico + fechas devuelve 0 registros y la tabla aparece vacía', async ({ authenticatedMadridPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C255' });
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.btnCritico.click();
     await authenticatedMadridPage.buscar();
@@ -63,7 +70,8 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     await expect(authenticatedMadridPage.noDataMessage).toBeVisible();
   });
 
-  test('búsqueda por número de pedido + fechas devuelve resultados que incluyen ese pedido', async ({ authenticatedMadridPage, page }) => {
+  test('Verificar que la búsqueda por número de pedido + fechas devuelve resultados que incluyen ese pedido', async ({ authenticatedMadridPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C256' });
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.numeroPedido.fill(TestData.madrid.pedido);
     await authenticatedMadridPage.buscar();
@@ -71,17 +79,18 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     await expect(page.locator('tbody').getByText(TestData.madrid.pedido).first()).toBeVisible();
   });
 
-  test('búsqueda por artículo + fechas devuelve resultados', async ({ authenticatedMadridPage }) => {
+  test('Verificar que la búsqueda por artículo + fechas devuelve resultados', async ({ authenticatedMadridPage }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C257' });
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.setArticulo(TestData.madrid.articulo);
     await authenticatedMadridPage.buscar();
     expect(await authenticatedMadridPage.getTotalResultCount()).toBeGreaterThan(0);
   });
 
-  test('Generar DBF descarga ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación', async ({ authenticatedMadridPage, page }) => {
+  test('Verificar que Generar DBF descarga un ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación', async ({ authenticatedMadridPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C258' });
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
 
-    // Obtener el Cod. Instalacion de la primera fila antes de seleccionarla
     const codInstalacion = await page.evaluate(() => {
       const ths = Array.from(document.querySelectorAll('th'));
       const idx = ths.findIndex(th => (th as HTMLElement).innerText.trim() === 'Cod. Instalacion');
@@ -105,7 +114,6 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     const zipPath = join(DOWNLOADS_DIR, zipName);
     await download.saveAs(zipPath);
 
-    // Verificar contenido del ZIP: debe incluir certificadoFirmado_ y CertificadoSellado_
     const zip = new AdmZip(zipPath);
     const entries = zip.getEntries().map(e => e.entryName);
 

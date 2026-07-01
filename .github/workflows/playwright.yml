@@ -4,11 +4,25 @@ on:
   repository_dispatch:
     types: [jira-testplan-linked]
   workflow_dispatch:
+    inputs:
+      region:
+        description: 'Región a ejecutar'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - andalucia
+          - madrid
 
 jobs:
-  test:
+  test-andalucia:
+    name: 'Andalucía'
+    if: >-
+      github.event_name == 'repository_dispatch' ||
+      github.event.inputs.region == 'all' ||
+      github.event.inputs.region == 'andalucia'
     runs-on: self-hosted
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,13 +35,52 @@ jobs:
         run: npx playwright install --with-deps chromium
         shell: cmd
 
-      - name: Run tests
-        run: npx playwright test
+      - name: Run Andalucía tests
+        run: npm run test:andalucia
         shell: cmd
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          HEADLESS: true
+          TESTRAIL_URL: ${{ secrets.TESTRAIL_URL }}
+          TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
+          TESTRAIL_API_KEY: ${{ secrets.TESTRAIL_API_KEY }}
+          TESTRAIL_PROJECT_ID: ${{ secrets.TESTRAIL_PROJECT_ID }}
+          TESTRAIL_ENABLED: ${{ secrets.TESTRAIL_ENABLED }}
+
+      - name: Upload Andalucía report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-andalucia
+          path: reports/
+          retention-days: 7
+
+  test-madrid:
+    name: 'Madrid'
+    if: >-
+      github.event_name == 'repository_dispatch' ||
+      github.event.inputs.region == 'all' ||
+      github.event.inputs.region == 'madrid'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm ci
+        shell: cmd
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        shell: cmd
+
+      - name: Run Madrid tests
+        run: npm run test:madrid
+        shell: cmd
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
           MADRID_USERNAME: ${{ secrets.MADRID_USERNAME }}
           MADRID_PASSWORD: ${{ secrets.MADRID_PASSWORD }}
           HEADLESS: true
@@ -37,41 +90,10 @@ jobs:
           TESTRAIL_PROJECT_ID: ${{ secrets.TESTRAIL_PROJECT_ID }}
           TESTRAIL_ENABLED: ${{ secrets.TESTRAIL_ENABLED }}
 
-      - name: Generate summary
-        if: always()
-        run: npm run summary
-        shell: cmd
-
-      - name: Upload report
+      - name: Upload Madrid report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: |
-            reports/summary.html
-            reports/downloads/
+          name: report-madrid
+          path: reports/
           retention-days: 7
-
-      - name: Summary
-        if: always()
-        shell: powershell
-        run: |
-          $xml = Join-Path (Get-Location) "reports/junit/results.xml"
-          if (Test-Path $xml) {
-            [xml]$j = Get-Content $xml
-            $s = $j.testsuites
-            $total   = [int]$s.tests
-            $failed  = [int]$s.failures
-            $errors  = [int]$s.errors
-            $skipped = [int]$s.skipped
-            $passed  = $total - $failed - $errors - $skipped
-            $content = "## Playwright Test Results`n"
-            $content += "| Total | Passed | Failed | Errors | Skipped |`n"
-            $content += "|-------|--------|--------|--------|---------|`n"
-            $content += "| $total | $passed | $failed | $errors | $skipped |`n"
-            $utf8 = New-Object System.Text.UTF8Encoding $false
-            [System.IO.File]::AppendAllText($env:GITHUB_STEP_SUMMARY, $content, $utf8)
-          } else {
-            $utf8 = New-Object System.Text.UTF8Encoding $false
-            [System.IO.File]::AppendAllText($env:GITHUB_STEP_SUMMARY, "## No se encontro el reporte JUnit en: $xml`n", $utf8)
-          }

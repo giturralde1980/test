@@ -24,6 +24,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
     headless: process.env.HEADLESS !== 'false',
+    acceptDownloads: true,
   },
   projects: [
     {

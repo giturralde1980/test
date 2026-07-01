@@ -2,7 +2,7 @@ name: Playwright Tests
 
 on:
   repository_dispatch:
-    types: [jira-testplan-linked]
+    types: [run-tests, jira-testplan-linked]
   workflow_dispatch:
     inputs:
       region:
@@ -18,10 +18,10 @@ on:
 jobs:
   test-andalucia:
     name: 'Andalucía'
+    # Corre siempre salvo que se pida explícitamente solo Madrid
     if: >-
-      github.event_name == 'repository_dispatch' ||
-      github.event.inputs.region == 'all' ||
-      github.event.inputs.region == 'andalucia'
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.region != 'madrid') ||
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.region != 'madrid')
     runs-on: self-hosted
     steps:
       - name: Checkout
@@ -59,10 +59,10 @@ jobs:
 
   test-madrid:
     name: 'Madrid'
+    # Corre siempre salvo que se pida explícitamente solo Andalucía
     if: >-
-      github.event_name == 'repository_dispatch' ||
-      github.event.inputs.region == 'all' ||
-      github.event.inputs.region == 'madrid'
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.region != 'andalucia') ||
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.region != 'andalucia')
     runs-on: self-hosted
     steps:
       - name: Checkout

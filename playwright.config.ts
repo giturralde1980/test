@@ -25,6 +25,9 @@ export default defineConfig({
     video: 'off',
     headless: process.env.HEADLESS !== 'false',
     acceptDownloads: true,
+    launchOptions: {
+      args: ['--disable-download-restrictions', '--safebrowsing-disable-download-protection'],
+    },
   },
   projects: [
     {

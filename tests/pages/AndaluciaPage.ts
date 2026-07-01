@@ -167,13 +167,12 @@ export class AndaluciaPage extends BasePage {
   }
 
   async setArticulo(value: string): Promise<void> {
-    // Click slot para abrir el autocomplete (el input interno está oculto hasta abrir)
     await this.articulos.locator('.v-input__slot').click();
     const input = this.articulos.locator('input').first();
     await input.fill(value);
-    await this.page.waitForTimeout(400);
-    const option = this.page.locator('.menuable__content__active .v-list-item__title').filter({ hasText: value });
-    if (await option.count() > 0) await option.click();
+    const option = this.page.locator('.menuable__content__active .v-list-item__title').filter({ hasText: value }).first();
+    await option.waitFor({ state: 'visible', timeout: 8_000 });
+    await option.click();
   }
 
   async selectTableRow(index = 0): Promise<void> {

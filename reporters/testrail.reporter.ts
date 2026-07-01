@@ -23,6 +23,20 @@ const STATUS: Record<string, number> = {
 
 const AUTH = Buffer.from(`${TR_USER}:${TR_KEY}`).toString('base64');
 
+function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*[mGKHF]/g, '');
+}
+
+function buildComment(result: TestResult): string {
+  if (result.status === 'passed') return 'Automatizado: PASSED';
+  if (!result.error) return result.status;
+  const clean = stripAnsi(result.error.message ?? '');
+  // Incluir hasta 4 líneas para capturar Expected / Received
+  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 4);
+  return `FAILED:\n${lines.join('\n')}`;
+}
+
 async function trFetch(method: string, endpoint: string, body?: unknown): Promise<unknown> {
   const res = await fetch(`${TR_URL}/index.php?/api/v2/${endpoint}`, {
     method,
@@ -107,7 +121,7 @@ interface PendingResult {
 class TestRailReporter implements Reporter {
   private runId:        number | null = null;
   private caseToTestId: Map<number, number> = new Map();
-  private pending:      PendingResult[] = [];
+  private pending:      Map<number, PendingResult> = new Map(); // case_id → último resultado
   private enabled:      boolean;
 
   constructor() {
@@ -176,15 +190,14 @@ class TestRailReporter implements Reporter {
     if (isNaN(caseId)) return;
 
     const statusId = STATUS[result.status] ?? 4;
-    const comment  = result.error
-      ? `FAILED: ${result.error.message?.split('\n')[0] ?? ''}`
-      : result.status === 'passed' ? 'Automatizado: PASSED' : result.status;
+    const comment  = buildComment(result);
 
     const screenshotAttachment = result.attachments.find(
       a => a.name === 'screenshot' && a.path
     );
 
-    this.pending.push({
+    // Sobreescribe si el test fue reintentado — solo enviamos el resultado final
+    this.pending.set(caseId, {
       case_id:        caseId,
       status_id:      statusId,
       comment,
@@ -193,12 +206,12 @@ class TestRailReporter implements Reporter {
   }
 
   async onEnd() {
-    if (!this.enabled || this.runId === null || !this.pending.length) return;
+    if (!this.enabled || this.runId === null || !this.pending.size) return;
 
     let screenshotsUploaded = 0;
 
     try {
-      for (const p of this.pending) {
+      for (const p of this.pending.values()) {
         const testId = this.caseToTestId.get(p.case_id);
         if (!testId) continue;
 
@@ -217,7 +230,7 @@ class TestRailReporter implements Reporter {
         }
       }
 
-      console.log(`[TestRail] ${this.pending.length} resultado(s) enviado(s) al run ${this.runId}`);
+      console.log(`[TestRail] ${this.pending.size} resultado(s) enviado(s) al run ${this.runId}`);
       if (screenshotsUploaded > 0) {
         console.log(`[TestRail] ${screenshotsUploaded} screenshot(s) adjunto(s)`);
       }

@@ -28,7 +28,14 @@ jobs:
           BASE_URL: ${{ secrets.BASE_URL }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          MADRID_USERNAME: ${{ secrets.MADRID_USERNAME }}
+          MADRID_PASSWORD: ${{ secrets.MADRID_PASSWORD }}
           HEADLESS: true
+          TESTRAIL_URL: ${{ secrets.TESTRAIL_URL }}
+          TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
+          TESTRAIL_API_KEY: ${{ secrets.TESTRAIL_API_KEY }}
+          TESTRAIL_PROJECT_ID: ${{ secrets.TESTRAIL_PROJECT_ID }}
+          TESTRAIL_ENABLED: ${{ secrets.TESTRAIL_ENABLED }}
 
       - name: Generate summary
         if: always()

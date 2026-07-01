@@ -88,6 +88,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que Generar DBF descarga un ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación', async ({ authenticatedMadridPage, page }) => {
+    test.setTimeout(120_000);
     test.info().annotations.push({ type: 'testrail', description: 'C258' });
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
 

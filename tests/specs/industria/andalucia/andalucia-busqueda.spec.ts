@@ -88,8 +88,9 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que al generar XML se descarga un fichero SIOCA_YYYYMMDD_HHMMSS.xml', async ({ authenticatedPage, page }) => {
-    test.setTimeout(120_000);
     test.info().annotations.push({ type: 'testrail', description: 'C53' });
+    test.skip(!!process.env.CI, 'Descarga HTTP bloqueada por Chrome en CI — ejecutar en local');
+    test.setTimeout(120_000);
     await authenticatedPage.buscarPorFechas(desde, hasta);
     await authenticatedPage.selectTableRow(0);
 
@@ -106,8 +107,9 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el XML generado tiene estructura y contenido válidos', async ({ authenticatedPage, page }) => {
-    test.setTimeout(120_000);
     test.info().annotations.push({ type: 'testrail', description: 'C54' });
+    test.skip(!!process.env.CI, 'Descarga HTTP bloqueada por Chrome en CI — ejecutar en local');
+    test.setTimeout(120_000);
     await authenticatedPage.buscarPorFechas(desde, hasta);
     await authenticatedPage.selectTableRow(0);
 

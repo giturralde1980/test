@@ -149,14 +149,18 @@ export class AndaluciaPage extends BasePage {
     const noDataOrFooter = this.noDataMessage.or(this.page.locator('.v-data-footer__pagination'));
     await noDataOrFooter.first().waitFor({ state: 'visible', timeout: 15_000 });
 
-    // Poll hasta 25s si el servidor devuelve 0 sin mensaje "No data" (cold-start)
-    const deadline = Date.now() + 25_000;
+    // Poll hasta que el count sea estable 2 lecturas seguidas (el servidor carga en batches)
+    // Deadline largo para cubrir cold-start (puede devolver 0 hasta 30-40s)
+    const pollMs = process.env.CI ? 45_000 : 35_000;
+    const deadline = Date.now() + pollMs;
+    let prevCount = -1;
     while (Date.now() < deadline) {
       if (await this.noDataMessage.isVisible()) return 0;
       const text = await this.page.locator('.v-data-footer__pagination').innerText();
       const match = text.match(/of (\d+)/);
       const count = match ? parseInt(match[1], 10) : 0;
-      if (count > 0) return count;
+      if (count > 0 && count === prevCount) return count;
+      prevCount = count;
       await this.page.waitForTimeout(500);
     }
 

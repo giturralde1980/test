@@ -149,8 +149,9 @@ export class AndaluciaPage extends BasePage {
     const noDataOrFooter = this.noDataMessage.or(this.page.locator('.v-data-footer__pagination'));
     await noDataOrFooter.first().waitFor({ state: 'visible', timeout: 15_000 });
 
-    // Poll hasta 25s si el servidor devuelve 0 sin mensaje "No data" (cold-start)
-    const deadline = Date.now() + 25_000;
+    // Poll hasta 45s en CI / 25s local si el servidor devuelve 0 sin mensaje "No data" (cold-start)
+    const pollMs = process.env.CI ? 45_000 : 25_000;
+    const deadline = Date.now() + pollMs;
     while (Date.now() < deadline) {
       if (await this.noDataMessage.isVisible()) return 0;
       const text = await this.page.locator('.v-data-footer__pagination').innerText();

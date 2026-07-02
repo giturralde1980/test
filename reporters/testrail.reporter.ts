@@ -73,7 +73,8 @@ function buildRunName(prefix: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   const date = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
   const time = `${pad(now.getHours())}${pad(now.getMinutes())}`;
-  return `${prefix}_${date}_${time}`;
+  const env  = process.env.CI ? 'CI' : 'LOC';
+  return `${prefix}_${date}_${time}_${env}`;
 }
 
 function getCaseIdsForRegion(prefix: string): number[] {

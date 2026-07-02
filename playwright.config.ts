@@ -8,7 +8,7 @@ export default defineConfig({
   // globalSetup: './tests/global-setup.ts',  // storageState no funciona: app usa sesión de servidor
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  retries: 1,
   workers: 1,
   timeout: process.env.CI ? 120_000 : 30_000,
   reporter: [

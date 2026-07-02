@@ -32,7 +32,6 @@ function buildComment(result: TestResult): string {
   if (result.status === 'passed') return 'Automatizado: PASSED';
   if (!result.error) return result.status;
   const clean = stripAnsi(result.error.message ?? '');
-  // Incluir hasta 4 líneas para capturar Expected / Received
   const lines = clean.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 4);
   return `FAILED:\n${lines.join('\n')}`;
 }
@@ -77,38 +76,57 @@ function buildRunName(prefix: string): string {
   return `${prefix}_${date}_${time}`;
 }
 
-function detectRegion(suite: Suite): string {
+function getCaseIdsForRegion(prefix: string): number[] {
+  const regionFile = prefix === 'TE_Madrid'
+    ? 'testrail-mapping-madrid.json'
+    : prefix === 'TE_Andalucia'
+      ? 'testrail-mapping-andalucia.json'
+      : null;
+
+  if (!regionFile) {
+    // Fallback: load all mappings
+    const map: number[] = [];
+    for (const file of ['testrail-mapping-andalucia.json', 'testrail-mapping-madrid.json']) {
+      const p = path.join(process.cwd(), 'scripts', file);
+      if (!fs.existsSync(p)) continue;
+      const entries: Array<{ caseId: number }> = JSON.parse(fs.readFileSync(p, 'utf8'));
+      for (const { caseId } of entries) map.push(caseId);
+    }
+    return map;
+  }
+
+  const p = path.join(process.cwd(), 'scripts', regionFile);
+  if (!fs.existsSync(p)) return [];
+  const entries: Array<{ caseId: number }> = JSON.parse(fs.readFileSync(p, 'utf8'));
+  return entries.map(e => e.caseId);
+}
+
+function detectRegions(suite: Suite): string[] {
   // Env var override takes priority (useful for npm scripts)
   const envPrefix = process.env.TESTRAIL_RUN_PREFIX;
-  if (envPrefix) return envPrefix;
+  if (envPrefix) return [envPrefix];
 
-  // Auto-detect from test file paths in the suite
-  const titles: string[] = [];
+  // Auto-detect from test file paths — create one run per detected region
+  const files: string[] = [];
   const collect = (s: Suite) => {
     for (const child of s.suites) collect(child);
-    for (const t of s.tests) titles.push(t.location?.file ?? '');
+    for (const t of s.tests) files.push(t.location?.file ?? '');
   };
   collect(suite);
 
-  const hasMadrid    = titles.some(f => f.toLowerCase().includes('madrid'));
-  const hasAndalucia = titles.some(f => f.toLowerCase().includes('andalucia'));
+  const hasMadrid    = files.some(f => f.toLowerCase().includes('madrid'));
+  const hasAndalucia = files.some(f => f.toLowerCase().includes('andalucia'));
 
-  if (hasMadrid && !hasAndalucia) return 'TE_Madrid';
-  if (hasAndalucia && !hasMadrid) return 'TE_Andalucia';
-  // Both or neither: fall back to generic name
-  return 'TE_Industria';
+  const regions: string[] = [];
+  if (hasAndalucia) regions.push('TE_Andalucia');
+  if (hasMadrid)    regions.push('TE_Madrid');
+  return regions.length ? regions : ['TE_Industria'];
 }
 
-function loadAllMappings(): Map<number, string> {
-  const map = new Map<number, string>();
-  const files = ['testrail-mapping-andalucia.json', 'testrail-mapping-madrid.json'];
-  for (const file of files) {
-    const p = path.join(process.cwd(), 'scripts', file);
-    if (!fs.existsSync(p)) continue;
-    const entries: Array<{ title: string; caseId: number }> = JSON.parse(fs.readFileSync(p, 'utf8'));
-    for (const { caseId, title } of entries) map.set(caseId, title);
-  }
-  return map;
+function regionForFile(file: string): string | null {
+  if (file.toLowerCase().includes('madrid'))    return 'TE_Madrid';
+  if (file.toLowerCase().includes('andalucia')) return 'TE_Andalucia';
+  return null;
 }
 
 interface PendingResult {
@@ -118,11 +136,15 @@ interface PendingResult {
   screenshotPath?: string;
 }
 
+interface RegionRun {
+  runId:        number;
+  caseToTestId: Map<number, number>;
+  pending:      Map<number, PendingResult>;
+}
+
 class TestRailReporter implements Reporter {
-  private runId:        number | null = null;
-  private caseToTestId: Map<number, number> = new Map();
-  private pending:      Map<number, PendingResult> = new Map(); // case_id → último resultado
-  private enabled:      boolean;
+  private regions: Map<string, RegionRun> = new Map();
+  private enabled: boolean;
 
   constructor() {
     this.enabled = process.env.TESTRAIL_ENABLED === 'true' && !!TR_URL && !!TR_USER && !!TR_KEY;
@@ -130,58 +152,48 @@ class TestRailReporter implements Reporter {
 
   async onBegin(_config: FullConfig, suite: Suite) {
     if (!this.enabled) return;
-    try {
-      const allCases = loadAllMappings();
-      if (!allCases.size) {
-        console.warn('[TestRail] No se encontraron mappings. Ejecuta los scripts de sync primero.');
-        return;
+
+    const regionPrefixes = detectRegions(suite);
+    const hasMappings = regionPrefixes.some(p => getCaseIdsForRegion(p).length > 0);
+    if (!hasMappings) {
+      console.warn('[TestRail] No se encontraron mappings. Ejecuta los scripts de sync primero.');
+      return;
+    }
+
+    for (const prefix of regionPrefixes) {
+      try {
+        const caseIds = getCaseIdsForRegion(prefix);
+        if (!caseIds.length) {
+          console.warn(`[TestRail] Sin casos para ${prefix}, se omite el run.`);
+          continue;
+        }
+
+        const name = buildRunName(prefix);
+        const run = await trFetch('POST', `add_run/${PROJECT_ID}`, {
+          name,
+          include_all: false,
+          case_ids:    caseIds,
+        }) as { id: number; name: string };
+
+        console.log(`\n[TestRail] Test Run creado: "${run.name}" (ID ${run.id})`);
+
+        const tests = await trFetch('GET', `get_tests/${run.id}`) as unknown;
+        const testList = (
+          Array.isArray(tests) ? tests : (tests as Record<string, unknown>).tests ?? []
+        ) as Array<{ id: number; case_id: number }>;
+
+        const caseToTestId = new Map<number, number>();
+        for (const t of testList) caseToTestId.set(t.case_id, t.id);
+
+        this.regions.set(prefix, { runId: run.id, caseToTestId, pending: new Map() });
+      } catch (e) {
+        console.error(`[TestRail] Error al crear run para ${prefix}:`, (e as Error).message);
       }
-
-      const prefix  = detectRegion(suite);
-      const name    = buildRunName(prefix);
-
-      // Only include case IDs that belong to the detected region's mapping file
-      const regionFile = prefix === 'TE_Madrid'
-        ? 'testrail-mapping-madrid.json'
-        : prefix === 'TE_Andalucia'
-          ? 'testrail-mapping-andalucia.json'
-          : null;
-
-      let caseIds: number[];
-      if (regionFile) {
-        const p = path.join(process.cwd(), 'scripts', regionFile);
-        const entries: Array<{ caseId: number }> = fs.existsSync(p)
-          ? JSON.parse(fs.readFileSync(p, 'utf8'))
-          : [];
-        caseIds = entries.map(e => e.caseId);
-      } else {
-        caseIds = [...allCases.keys()];
-      }
-
-      // Crear el run
-      const run = await trFetch('POST', `add_run/${PROJECT_ID}`, {
-        name,
-        include_all: false,
-        case_ids:    caseIds,
-      }) as { id: number; name: string };
-      this.runId = run.id;
-      console.log(`\n[TestRail] Test Run creado: "${run.name}" (ID ${this.runId})`);
-
-      // Obtener mapping case_id → test_id
-      const tests = await trFetch('GET', `get_tests/${this.runId}`) as unknown;
-      const testList = (
-        Array.isArray(tests) ? tests : (tests as Record<string, unknown>).tests ?? []
-      ) as Array<{ id: number; case_id: number }>;
-      for (const t of testList) {
-        this.caseToTestId.set(t.case_id, t.id);
-      }
-    } catch (e) {
-      console.error('[TestRail] Error al crear el run:', (e as Error).message);
     }
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
-    if (!this.enabled || this.runId === null) return;
+    if (!this.enabled || !this.regions.size) return;
 
     const annotation = test.annotations.find(a => a.type === 'testrail');
     if (!annotation?.description) return;
@@ -191,13 +203,24 @@ class TestRailReporter implements Reporter {
 
     const statusId = STATUS[result.status] ?? 4;
     const comment  = buildComment(result);
+    const screenshotAttachment = result.attachments.find(a => a.name === 'screenshot' && a.path);
 
-    const screenshotAttachment = result.attachments.find(
-      a => a.name === 'screenshot' && a.path
-    );
+    // Route to the correct region run by file path, fallback to whichever run has the case
+    const file = test.location?.file ?? '';
+    let regionKey = regionForFile(file);
 
-    // Sobreescribe si el test fue reintentado — solo enviamos el resultado final
-    this.pending.set(caseId, {
+    if (!regionKey || !this.regions.has(regionKey)) {
+      for (const [key, region] of this.regions) {
+        if (region.caseToTestId.has(caseId)) { regionKey = key; break; }
+      }
+    }
+
+    if (!regionKey) return;
+    const region = this.regions.get(regionKey);
+    if (!region) return;
+
+    // Overwrite on retry — only the final result is sent
+    region.pending.set(caseId, {
       case_id:        caseId,
       status_id:      statusId,
       comment,
@@ -206,39 +229,38 @@ class TestRailReporter implements Reporter {
   }
 
   async onEnd() {
-    if (!this.enabled || this.runId === null || !this.pending.size) return;
+    if (!this.enabled || !this.regions.size) return;
 
-    let screenshotsUploaded = 0;
+    for (const [regionKey, region] of this.regions) {
+      let screenshotsUploaded = 0;
+      try {
+        for (const p of region.pending.values()) {
+          const testId = region.caseToTestId.get(p.case_id);
+          if (!testId) continue;
 
-    try {
-      for (const p of this.pending.values()) {
-        const testId = this.caseToTestId.get(p.case_id);
-        if (!testId) continue;
+          const res = await trFetch('POST', `add_result/${testId}`, {
+            status_id: p.status_id,
+            comment:   p.comment,
+          }) as { id: number };
 
-        const result = await trFetch('POST', `add_result/${testId}`, {
-          status_id: p.status_id,
-          comment:   p.comment,
-        }) as { id: number };
-
-        if (p.screenshotPath) {
-          try {
-            await uploadScreenshot(result.id, p.screenshotPath);
-            screenshotsUploaded++;
-          } catch (e) {
-            console.error(`[TestRail] Error al subir screenshot (C${p.case_id}):`, (e as Error).message);
+          if (p.screenshotPath) {
+            try {
+              await uploadScreenshot(res.id, p.screenshotPath);
+              screenshotsUploaded++;
+            } catch (e) {
+              console.error(`[TestRail] Error al subir screenshot (C${p.case_id}):`, (e as Error).message);
+            }
           }
         }
-      }
 
-      console.log(`[TestRail] ${this.pending.size} resultado(s) enviado(s) al run ${this.runId}`);
-      if (screenshotsUploaded > 0) {
-        console.log(`[TestRail] ${screenshotsUploaded} screenshot(s) adjunto(s)`);
-      }
+        console.log(`[TestRail] ${region.pending.size} resultado(s) → run ${region.runId} (${regionKey})`);
+        if (screenshotsUploaded > 0) console.log(`[TestRail] ${screenshotsUploaded} screenshot(s) adjunto(s)`);
 
-      await trFetch('POST', `close_run/${this.runId}`, {});
-      console.log(`[TestRail] Run ${this.runId} cerrado.\n`);
-    } catch (e) {
-      console.error('[TestRail] Error en onEnd:', (e as Error).message);
+        await trFetch('POST', `close_run/${region.runId}`, {});
+        console.log(`[TestRail] Run ${region.runId} (${regionKey}) cerrado.\n`);
+      } catch (e) {
+        console.error(`[TestRail] Error en onEnd (${regionKey}):`, (e as Error).message);
+      }
     }
   }
 }

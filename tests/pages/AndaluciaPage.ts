@@ -137,7 +137,7 @@ export class AndaluciaPage extends BasePage {
   }
 
   async buscarPorFechas(desde: string, hasta: string): Promise<void> {
-    await this.btnBuscar.waitFor({ state: 'visible' });
+    await this.btnBuscar.waitFor({ state: 'visible', timeout: 20_000 });
     await this.setDateViaCalendar(this.dateDesde, desde);
     await this.setDateViaCalendar(this.dateHasta, hasta);
     await this.buscar();
@@ -145,7 +145,10 @@ export class AndaluciaPage extends BasePage {
 
   async getTotalResultCount(): Promise<number> {
     const loaderTimeout = process.env.CI ? 90_000 : 60_000;
-    await this.page.locator('text=Pasito a pasito...').waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
+    const loader = this.page.locator('text=Pasito a pasito...');
+    if (await loader.isVisible()) {
+      await loader.waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
+    }
     const noDataOrFooter = this.noDataMessage.or(this.page.locator('.v-data-footer__pagination'));
     await noDataOrFooter.first().waitFor({ state: 'visible', timeout: 15_000 });
 

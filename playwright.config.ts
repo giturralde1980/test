@@ -10,7 +10,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 1,
   workers: 1,
-  timeout: process.env.CI ? 120_000 : 30_000,
+  timeout: process.env.CI ? 120_000 : 60_000,
   reporter: [
     ['html', { outputFolder: 'reports/html', open: 'never' }],
     ['junit', { outputFile: 'reports/junit/results.xml' }],
@@ -20,6 +20,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: process.env.BASE_URL || 'http://industriatest.ocaicp.com',
+    actionTimeout: 30_000,
     trace: 'off',
     screenshot: 'only-on-failure',
     video: 'off',

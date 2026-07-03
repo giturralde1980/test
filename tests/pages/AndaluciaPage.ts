@@ -156,6 +156,9 @@ export class AndaluciaPage extends BasePage {
     // 3 lecturas (×500ms = 1s de estabilidad) evita capturar lotes intermedios que
     // coincidan en dos lecturas consecutivas antes de que llegue el último batch.
     const pollMs = process.env.CI ? 45_000 : 35_000;
+    // En CI los lotes intermedios pueden ser estables >1s; usar intervalos más largos
+    // exige 3 segundos de estabilidad real antes de aceptar el count como definitivo.
+    const pollInterval = process.env.CI ? 1_000 : 500;
     const deadline = Date.now() + pollMs;
     let prevCount = -1;
     let stableStreak = 0;
@@ -163,7 +166,7 @@ export class AndaluciaPage extends BasePage {
       // Doble confirmación antes de devolver 0: el noDataMessage puede aparecer
       // brevemente durante la transición post-loader antes de que los datos rendericen.
       if (await this.noDataMessage.isVisible()) {
-        await this.page.waitForTimeout(500);
+        await this.page.waitForTimeout(pollInterval);
         if (await this.noDataMessage.isVisible()) return 0;
       }
       const text = await this.page.locator('.v-data-footer__pagination').innerText();
@@ -176,7 +179,7 @@ export class AndaluciaPage extends BasePage {
         stableStreak = 0;
       }
       prevCount = count;
-      await this.page.waitForTimeout(500);
+      await this.page.waitForTimeout(pollInterval);
     }
 
     if (await this.noDataMessage.isVisible()) return 0;

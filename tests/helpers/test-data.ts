@@ -15,7 +15,7 @@ export const TestData = {
     fechas: { desde: '2026-01-08', hasta: '2026-01-09' },
     totales: {
       porFechas:    165,
-      sinDefectos:   98,
+      sinDefectos:  100,
       leve:          33,
       grave:         32,
       critico:        0,

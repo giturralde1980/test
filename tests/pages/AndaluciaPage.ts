@@ -166,10 +166,12 @@ export class AndaluciaPage extends BasePage {
       // Doble confirmación antes de devolver 0: el noDataMessage puede aparecer
       // brevemente durante la transición post-loader antes de que los datos rendericen.
       if (await this.noDataMessage.isVisible()) {
-        await this.page.waitForTimeout(pollInterval);
+        // MuleSoft puede mostrar "No data" brevemente antes del primer lote.
+        // Esperar 3s y reconfirmar: si hay datos en camino, el mensaje desaparece.
+        await this.page.waitForTimeout(3_000);
         if (await this.noDataMessage.isVisible()) return 0;
       }
-      const text = await this.page.locator('.v-data-footer__pagination').innerText();
+      const text = await this.page.locator('.v-data-footer__pagination').innerText().catch(() => '');
       const match = text.match(/of (\d+)/);
       const count = match ? parseInt(match[1], 10) : 0;
       if (count > 0 && count === prevCount) {

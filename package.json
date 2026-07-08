@@ -12,6 +12,7 @@
     "test:debug": "cross-env HEADLESS=false playwright test --debug",
     "report": "playwright show-report reports/html",
     "summary": "node scripts/generate-summary.js",
+    "summary:v2": "node scripts/generate-summary-v2.js",
     "allure:report": "node scripts/allure-setup.js && npx allure generate allure-results --clean -o reports/allure-html && npx allure open reports/allure-html",
     "report:summary": "xunit-viewer -r reports/junit/results.xml -o reports/summary.html && start reports/summary.html",
     "test:full": "playwright test && npm run report:summary",

@@ -12,8 +12,8 @@ const totales = TestData.madrid.totales;
 
 async function setFechas(page: MadridPage): Promise<void> {
   await page.btnBuscar.waitFor({ state: 'visible' });
-  await page.setDateViaCalendar(page.dateDesde, desde);
-  await page.setDateViaCalendar(page.dateHasta, hasta);
+  await test.step(`Informar fecha desde: ${desde}`, () => page.setDateViaCalendar(page.dateDesde, desde));
+  await test.step(`Informar fecha hasta: ${hasta}`, () => page.setDateViaCalendar(page.dateHasta, hasta));
 }
 
 test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
@@ -23,58 +23,81 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     test.info().annotations.push({ type: 'testrail', description: 'C250' });
     await expect(authenticatedMadridPage.btnPeriodicas).toHaveClass(/v-btn--active/);
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.periodicas);
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros (esperado: ${totales.periodicas})`, () => {
+      expect(count).toBe(totales.periodicas);
+    });
   });
 
   test('Verificar que el filtro Corrección de Defectos + fechas devuelve 56 registros', async ({ authenticatedMadridPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C251' });
-    await authenticatedMadridPage.btnCorreccionDefectos.click();
+    await test.step('Clic en botón "Corrección de Defectos"', () => authenticatedMadridPage.btnCorreccionDefectos.click());
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.buscar();
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.correccionDefectos);
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros (esperado: ${totales.correccionDefectos})`, () => {
+      expect(count).toBe(totales.correccionDefectos);
+    });
   });
 
   test('Verificar que el filtro Sin Defectos + fechas devuelve 17 registros', async ({ authenticatedMadridPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C252' });
     await setFechas(authenticatedMadridPage);
-    await authenticatedMadridPage.btnSinDefectos.click();
+    await test.step('Clic en botón "SIN DEFECTOS"', () => authenticatedMadridPage.btnSinDefectos.click());
     await authenticatedMadridPage.buscar();
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.sinDefectos);
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros (esperado: ${totales.sinDefectos})`, () => {
+      expect(count).toBe(totales.sinDefectos);
+    });
   });
 
   test('Verificar que el filtro Leve a Reparar + fechas devuelve 0 registros y la tabla aparece vacía', async ({ authenticatedMadridPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C253' });
     await setFechas(authenticatedMadridPage);
-    await authenticatedMadridPage.btnLeveAReparar.click();
+    await test.step('Clic en botón "LEVE A REPARAR"', () => authenticatedMadridPage.btnLeveAReparar.click());
     await authenticatedMadridPage.buscar();
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.leve);
-    await expect(authenticatedMadridPage.noDataMessage).toBeVisible();
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros (esperado: ${totales.leve}) y la tabla aparece vacía`, async () => {
+      expect(count).toBe(totales.leve);
+      await expect(authenticatedMadridPage.noDataMessage).toBeVisible();
+    });
   });
 
   test('Verificar que el filtro Grave + fechas devuelve 20 registros', async ({ authenticatedMadridPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C254' });
     await setFechas(authenticatedMadridPage);
-    await authenticatedMadridPage.btnGrave.click();
+    await test.step('Clic en botón "GRAVE"', () => authenticatedMadridPage.btnGrave.click());
     await authenticatedMadridPage.buscar();
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.grave);
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros (esperado: ${totales.grave})`, () => {
+      expect(count).toBe(totales.grave);
+    });
   });
 
   test('Verificar que el filtro Crítico + fechas devuelve 0 registros y la tabla aparece vacía', async ({ authenticatedMadridPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C255' });
     await setFechas(authenticatedMadridPage);
-    await authenticatedMadridPage.btnCritico.click();
+    await test.step('Clic en botón "CRÍTICO"', () => authenticatedMadridPage.btnCritico.click());
     await authenticatedMadridPage.buscar();
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBe(totales.critico);
-    await expect(authenticatedMadridPage.noDataMessage).toBeVisible();
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros (esperado: ${totales.critico}) y la tabla aparece vacía`, async () => {
+      expect(count).toBe(totales.critico);
+      await expect(authenticatedMadridPage.noDataMessage).toBeVisible();
+    });
   });
 
   test('Verificar que la búsqueda por número de pedido + fechas devuelve resultados que incluyen ese pedido', async ({ authenticatedMadridPage, page }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C256' });
     await setFechas(authenticatedMadridPage);
-    await authenticatedMadridPage.numeroPedido.fill(TestData.madrid.pedido);
+    await test.step(`Introducir número de pedido: ${TestData.madrid.pedido}`, () =>
+      authenticatedMadridPage.numeroPedido.fill(TestData.madrid.pedido)
+    );
     await authenticatedMadridPage.buscar();
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBeGreaterThan(0);
-    await expect(page.locator('tbody').getByText(TestData.madrid.pedido).first()).toBeVisible();
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros e incluyen el pedido ${TestData.madrid.pedido}`, async () => {
+      expect(count).toBeGreaterThan(0);
+      await expect(page.locator('tbody').getByText(TestData.madrid.pedido).first()).toBeVisible();
+    });
   });
 
   test('Verificar que la búsqueda por artículo + fechas devuelve resultados', async ({ authenticatedMadridPage }) => {
@@ -82,7 +105,10 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.setArticulo(TestData.madrid.articulo);
     await authenticatedMadridPage.buscar();
-    expect(await authenticatedMadridPage.getTotalResultCount()).toBeGreaterThan(0);
+    const count = await authenticatedMadridPage.getTotalResultCount();
+    await test.step(`Resultado: se reciben ${count} registros (mayor que 0)`, () => {
+      expect(count).toBeGreaterThan(0);
+    });
   });
 
   test('Verificar que Generar DBF descarga un ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación', async ({ authenticatedMadridPage, page }) => {
@@ -102,10 +128,12 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
 
     await authenticatedMadridPage.selectTableRow(0);
 
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      authenticatedMadridPage.btnGenerarDbf.click(),
-    ]);
+    const [download] = await test.step('Clic en GENERAR DBF y descargar ZIP', () =>
+      Promise.all([
+        page.waitForEvent('download'),
+        authenticatedMadridPage.btnGenerarDbf.click(),
+      ])
+    );
 
     const zipName = download.suggestedFilename();
     expect(zipName, 'nombre del ZIP inesperado').toMatch(/^lote_\d+\.zip$/i);
@@ -117,26 +145,29 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     const zip = new AdmZip(zipPath);
     const entries = zip.getEntries().map(e => e.entryName);
 
-    const firmado = entries.find(n => /certificadoFirmado_/i.test(n));
-    const sellado = entries.find(n => /CertificadoSellado_/i.test(n));
+    await test.step(`Resultado: ZIP "${zipName}" contiene certificadoFirmado_ y CertificadoSellado_ del código ${codInstalacion}`, () => {
+      const firmado = entries.find(n => /certificadoFirmado_/i.test(n));
+      const sellado = entries.find(n => /CertificadoSellado_/i.test(n));
 
-    expect(firmado,  `falta certificadoFirmado_ en el ZIP. Entradas: ${entries}`).toBeTruthy();
-    expect(sellado,  `falta CertificadoSellado_ en el ZIP. Entradas: ${entries}`).toBeTruthy();
-    expect(firmado).toContain(codInstalacion);
-    expect(sellado).toContain(codInstalacion);
+      expect(firmado,  `falta certificadoFirmado_ en el ZIP. Entradas: ${entries}`).toBeTruthy();
+      expect(sellado,  `falta CertificadoSellado_ en el ZIP. Entradas: ${entries}`).toBeTruthy();
+      expect(firmado).toContain(codInstalacion);
+      expect(sellado).toContain(codInstalacion);
+    });
   });
 
   test('Verificar que el desplegable Inspector está cargado con datos', async ({ authenticatedMadridPage, page }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C259' });
-    await authenticatedMadridPage.inspector.click();
+    await test.step('Clic en el desplegable Inspector', () => authenticatedMadridPage.inspector.click());
     const options = page.locator('.menuable__content__active .v-list-item__title');
     await options.first().waitFor({ state: 'visible', timeout: 8_000 });
 
     const count = await options.count();
-    expect(count, 'El desplegable Inspector no devolvió ninguna opción').toBeGreaterThan(0);
-
     const texts = await options.allInnerTexts();
-    expect(texts.every(t => t.trim().length > 0), 'Alguna opción de Inspector aparece vacía').toBe(true);
+    await test.step(`Resultado: ${count} opción(es) cargada(s), ninguna vacía`, () => {
+      expect(count, 'El desplegable Inspector no devolvió ninguna opción').toBeGreaterThan(0);
+      expect(texts.every(t => t.trim().length > 0), 'Alguna opción de Inspector aparece vacía').toBe(true);
+    });
 
     await page.keyboard.press('Escape');
   });

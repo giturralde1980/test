@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, test } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -70,13 +70,15 @@ export class AndaluciaPage extends BasePage {
   }
 
   async buscar(): Promise<void> {
-    await this.btnBuscar.click();
-    // Esperar primero a que aparezca el loader (hasta 5s), luego a que desaparezca (hasta 60s)
-    // Si nunca aparece (respuesta instantánea), ambas llamadas resuelven inmediatamente
-    const loader = this.page.locator('text=Pasito a pasito...');
-    const loaderTimeout = process.env.CI ? 90_000 : 60_000;
-    await loader.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
-    await loader.waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
+    await test.step('Clic en BUSCAR', async () => {
+      await this.btnBuscar.click();
+      // Esperar primero a que aparezca el loader (hasta 5s), luego a que desaparezca (hasta 60s)
+      // Si nunca aparece (respuesta instantánea), ambas llamadas resuelven inmediatamente
+      const loader = this.page.locator('text=Pasito a pasito...');
+      const loaderTimeout = process.env.CI ? 90_000 : 60_000;
+      await loader.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+      await loader.waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
+    });
   }
 
   async setDateViaCalendar(inputLocator: Locator, isoDate: string): Promise<void> {
@@ -140,8 +142,8 @@ export class AndaluciaPage extends BasePage {
 
   async buscarPorFechas(desde: string, hasta: string): Promise<void> {
     await this.btnBuscar.waitFor({ state: 'visible', timeout: 20_000 });
-    await this.setDateViaCalendar(this.dateDesde, desde);
-    await this.setDateViaCalendar(this.dateHasta, hasta);
+    await test.step(`Informar fecha desde: ${desde}`, () => this.setDateViaCalendar(this.dateDesde, desde));
+    await test.step(`Informar fecha hasta: ${hasta}`, () => this.setDateViaCalendar(this.dateHasta, hasta));
     await this.buscar();
   }
 
@@ -193,21 +195,27 @@ export class AndaluciaPage extends BasePage {
   }
 
   async setArticulo(value: string): Promise<void> {
-    await this.articulos.locator('.v-input__slot').click();
-    const input = this.articulos.locator('input').first();
-    await input.fill(value);
-    const option = this.page.locator('.menuable__content__active .v-list-item__title').filter({ hasText: value }).first();
-    await option.waitFor({ state: 'visible', timeout: 8_000 });
-    await option.click();
+    await test.step(`Seleccionar artículo: ${value}`, async () => {
+      await this.articulos.locator('.v-input__slot').click();
+      const input = this.articulos.locator('input').first();
+      await input.fill(value);
+      const option = this.page.locator('.menuable__content__active .v-list-item__title').filter({ hasText: value }).first();
+      await option.waitFor({ state: 'visible', timeout: 8_000 });
+      await option.click();
+    });
   }
 
   async selectTableRow(index = 0): Promise<void> {
-    await this.page.locator('tbody .v-input--selection-controls__input').nth(index).click();
+    await test.step(`Seleccionar fila de la tabla (índice ${index})`, () =>
+      this.page.locator('tbody .v-input--selection-controls__input').nth(index).click()
+    );
   }
 
   async salir(): Promise<void> {
-    await this.btnSalir.click();
-    await this.page.waitForLoadState('networkidle');
+    await test.step('Clic en SALIR', async () => {
+      await this.btnSalir.click();
+      await this.page.waitForLoadState('networkidle');
+    });
   }
 
   async getTableHeaders(): Promise<string[]> {

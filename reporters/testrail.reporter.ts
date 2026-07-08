@@ -2,6 +2,7 @@ import type {
   Reporter,
   TestCase,
   TestResult,
+  TestStep,
   FullConfig,
   Suite,
 } from '@playwright/test/reporter';
@@ -28,12 +29,35 @@ function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*[mGKHF]/g, '');
 }
 
+// Recoge recursivamente los títulos de los test.step() explícitos, en orden de ejecución.
+// Se excluyen categorías internas de Playwright (expect, hook, fixture, pw:api) para no meter ruido.
+function collectSteps(steps: TestStep[] = []): string[] {
+  const out: string[] = [];
+  for (const s of steps) {
+    if (s.category === 'test.step') out.push(s.title);
+    if (s.steps?.length) out.push(...collectSteps(s.steps));
+  }
+  return out;
+}
+
 function buildComment(result: TestResult): string {
-  if (result.status === 'passed') return 'Automatizado: PASSED';
-  if (!result.error) return result.status;
-  const clean = stripAnsi(result.error.message ?? '');
-  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 4);
-  return `FAILED:\n${lines.join('\n')}`;
+  const steps = collectSteps(result.steps);
+  const stepsBlock = steps.length
+    ? `Pasos ejecutados:\n${steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
+    : '';
+
+  let header: string;
+  if (result.status === 'passed') {
+    header = 'Automatizado: PASSED';
+  } else if (!result.error) {
+    header = result.status;
+  } else {
+    const clean = stripAnsi(result.error.message ?? '');
+    const lines = clean.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 4);
+    header = `FAILED:\n${lines.join('\n')}`;
+  }
+
+  return [header, stepsBlock].filter(Boolean).join('\n\n');
 }
 
 async function trFetch(method: string, endpoint: string, body?: unknown): Promise<unknown> {

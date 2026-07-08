@@ -22,13 +22,17 @@ export const test = base.extend<Fixtures>({
 
   authenticatedPage: async ({ page }, use) => {
     const loginPage = new LoginPage(page);
-    await loginPage.login(TestData.credentials.username, TestData.credentials.password);
+    await base.step(`Login con usuario "${TestData.credentials.username}" (Andalucía)`, () =>
+      loginPage.login(TestData.credentials.username, TestData.credentials.password)
+    );
     await use(new AndaluciaPage(page));
   },
 
   authenticatedMadridPage: async ({ page }, use) => {
     const loginPage = new LoginPage(page);
-    await loginPage.login(TestData.madridCredentials.username, TestData.madridCredentials.password);
+    await base.step(`Login con usuario "${TestData.madridCredentials.username}" (Madrid)`, () =>
+      loginPage.login(TestData.madridCredentials.username, TestData.madridCredentials.password)
+    );
     await use(new MadridPage(page));
   },
 });

@@ -142,6 +142,39 @@ const CASES = [
       },
     ],
   },
+  {
+    title: 'Verificar que el desplegable Inspector está cargado con datos',
+    steps: [
+      LOGIN_STEP,
+      { content: 'Hacer clic en el desplegable Inspector', expected: 'El desplegable se abre y muestra un listado de opciones' },
+      {
+        content: 'Comprobar el contenido del listado desplegado',
+        expected: 'El listado contiene al menos una opción y ninguna aparece vacía (texto en blanco)',
+      },
+    ],
+  },
+  {
+    title: 'Verificar que el desplegable Delegación está cargado con datos',
+    steps: [
+      LOGIN_STEP,
+      { content: 'Hacer clic en el desplegable Delegación', expected: 'El desplegable se abre y muestra un listado de opciones' },
+      {
+        content: 'Comprobar el contenido del listado desplegado',
+        expected: 'El listado contiene al menos una opción y ninguna aparece vacía (texto en blanco)',
+      },
+    ],
+  },
+  {
+    title: 'Verificar que el desplegable Provincia está cargado con datos',
+    steps: [
+      LOGIN_STEP,
+      { content: 'Hacer clic en el desplegable Provincia', expected: 'El desplegable se abre y muestra un listado de opciones' },
+      {
+        content: 'Comprobar el contenido del listado desplegado',
+        expected: 'El listado contiene al menos una opción y ninguna aparece vacía (texto en blanco)',
+      },
+    ],
+  },
 ];
 
 // ── Main ─────────────────────────────────────────────────────────────────────

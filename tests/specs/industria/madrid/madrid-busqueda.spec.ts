@@ -16,8 +16,6 @@ async function setFechas(page: MadridPage): Promise<void> {
   await page.setDateViaCalendar(page.dateHasta, hasta);
 }
 
-test.use({ screenshot: 'on' });
-
 test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   test.describe.configure({ timeout: process.env.CI ? 120_000 : 90_000 });
 
@@ -126,6 +124,21 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     expect(sellado,  `falta CertificadoSellado_ en el ZIP. Entradas: ${entries}`).toBeTruthy();
     expect(firmado).toContain(codInstalacion);
     expect(sellado).toContain(codInstalacion);
+  });
+
+  test('Verificar que el desplegable Inspector está cargado con datos', async ({ authenticatedMadridPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C259' });
+    await authenticatedMadridPage.inspector.click();
+    const options = page.locator('.menuable__content__active .v-list-item__title');
+    await options.first().waitFor({ state: 'visible', timeout: 8_000 });
+
+    const count = await options.count();
+    expect(count, 'El desplegable Inspector no devolvió ninguna opción').toBeGreaterThan(0);
+
+    const texts = await options.allInnerTexts();
+    expect(texts.every(t => t.trim().length > 0), 'Alguna opción de Inspector aparece vacía').toBe(true);
+
+    await page.keyboard.press('Escape');
   });
 
 });

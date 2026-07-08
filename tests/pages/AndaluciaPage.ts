@@ -18,6 +18,7 @@ export class AndaluciaPage extends BasePage {
 
   // Selectores Vuetify (autocomplete / combobox)
   readonly delegacion: Locator;
+  readonly provincia: Locator;
   readonly inspector: Locator;
   readonly tipoTramitacion: Locator;
   readonly articulos: Locator;
@@ -49,6 +50,7 @@ export class AndaluciaPage extends BasePage {
 
     // Vuetify selects — se buscan por texto del label padre
     this.delegacion = page.locator('.v-input').filter({ hasText: 'Delegación' }).locator('input').first();
+    this.provincia = page.locator('.v-input').filter({ hasText: 'Provincia' }).locator('input').first();
     this.inspector = page.locator('.v-input').filter({ hasText: 'Inspector' }).locator('input').first();
     this.tipoTramitacion = page.locator('.v-input').filter({ hasText: 'Tipo de tramitación' }).locator('input').first();
     this.articulos = page.locator('.v-input').filter({ hasText: /articulos/i }).first();

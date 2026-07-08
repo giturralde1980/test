@@ -19,7 +19,7 @@ export default defineConfig({
     ['./reporters/testrail.reporter.ts'],
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'http://industriatest.ocaicp.com',
+    baseURL: process.env.BASE_URL || 'http://industria.ocaicp.com',
     actionTimeout: 30_000,
     trace: 'off',
     screenshot: 'only-on-failure',

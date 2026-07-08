@@ -26,8 +26,6 @@ function xmlHas(xml: string, tag: string): boolean {
   return new RegExp(`<${tag}[\\s/>]`).test(xml);
 }
 
-test.use({ screenshot: 'on' });
-
 test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   test.describe.configure({ timeout: process.env.CI ? 120_000 : 60_000 });
 
@@ -170,6 +168,51 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
 
     const tipoDoc = xmlValue(xml, 'tipo_documentacion');
     expect(['CIF', 'NIF', 'NIE', 'PASAPORTE'], `<tipo_documentacion> desconocido: "${tipoDoc}"`).toContain(tipoDoc);
+  });
+
+  test('Verificar que el desplegable Inspector está cargado con datos', async ({ authenticatedPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C55' });
+    await authenticatedPage.inspector.click();
+    const options = page.locator('.menuable__content__active .v-list-item__title');
+    await options.first().waitFor({ state: 'visible', timeout: 8_000 });
+
+    const count = await options.count();
+    expect(count, 'El desplegable Inspector no devolvió ninguna opción').toBeGreaterThan(0);
+
+    const texts = await options.allInnerTexts();
+    expect(texts.every(t => t.trim().length > 0), 'Alguna opción de Inspector aparece vacía').toBe(true);
+
+    await page.keyboard.press('Escape');
+  });
+
+  test('Verificar que el desplegable Delegación está cargado con datos', async ({ authenticatedPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C56' });
+    await authenticatedPage.delegacion.click();
+    const options = page.locator('.menuable__content__active .v-list-item__title');
+    await options.first().waitFor({ state: 'visible', timeout: 8_000 });
+
+    const count = await options.count();
+    expect(count, 'El desplegable Delegación no devolvió ninguna opción').toBeGreaterThan(0);
+
+    const texts = await options.allInnerTexts();
+    expect(texts.every(t => t.trim().length > 0), 'Alguna opción de Delegación aparece vacía').toBe(true);
+
+    await page.keyboard.press('Escape');
+  });
+
+  test('Verificar que el desplegable Provincia está cargado con datos', async ({ authenticatedPage, page }) => {
+    test.info().annotations.push({ type: 'testrail', description: 'C57' });
+    await authenticatedPage.provincia.click();
+    const options = page.locator('.menuable__content__active .v-list-item__title');
+    await options.first().waitFor({ state: 'visible', timeout: 8_000 });
+
+    const count = await options.count();
+    expect(count, 'El desplegable Provincia no devolvió ninguna opción').toBeGreaterThan(0);
+
+    const texts = await options.allInnerTexts();
+    expect(texts.every(t => t.trim().length > 0), 'Alguna opción de Provincia aparece vacía').toBe(true);
+
+    await page.keyboard.press('Escape');
   });
 
 });

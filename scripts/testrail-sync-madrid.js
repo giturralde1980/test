@@ -136,6 +136,17 @@ const CASES = [
       },
     ],
   },
+  {
+    title: 'Verificar que el desplegable Inspector está cargado con datos',
+    steps: [
+      LOGIN_STEP,
+      { content: 'Hacer clic en el desplegable Inspector', expected: 'El desplegable se abre y muestra un listado de opciones' },
+      {
+        content: 'Comprobar el contenido del listado desplegado',
+        expected: 'El listado contiene al menos una opción y ninguna aparece vacía (texto en blanco)',
+      },
+    ],
+  },
 ];
 
 // ── Main ─────────────────────────────────────────────────────────────────────

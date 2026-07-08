@@ -1,0 +1,62 @@
+# Requiere un runner propio (self-hosted) con acceso a la red corporativa,
+# igual que el runner de GitHub Actions ya usado en .github/workflows/playwright.yml.
+# Registrar en: Repository settings → Pipelines → Runners → Add Runner.
+# Ajustar las labels de "runs-on" de abajo para que coincidan con las elegidas al registrar el runner.
+
+image: node:20
+
+pipelines:
+  custom:
+    andalucia:
+      - step:
+          name: 'Andalucía'
+          runs-on:
+            - self.hosted
+            - windows
+          script:
+            - npm ci
+            - npx playwright install --with-deps chromium
+            - npm run test:andalucia
+          artifacts:
+            - reports/**
+
+    madrid:
+      - step:
+          name: 'Madrid'
+          runs-on:
+            - self.hosted
+            - windows
+          script:
+            - npm ci
+            - npx playwright install --with-deps chromium
+            - npm run test:madrid
+          artifacts:
+            - reports/**
+
+    all:
+      - step:
+          name: 'Andalucía'
+          runs-on:
+            - self.hosted
+            - windows
+          script:
+            - npm ci
+            - npx playwright install --with-deps chromium
+            - npm run test:andalucia
+          artifacts:
+            - reports/**
+      - step:
+          name: 'Madrid'
+          runs-on:
+            - self.hosted
+            - windows
+          script:
+            - npm ci
+            - npx playwright install --with-deps chromium
+            - npm run test:madrid
+          artifacts:
+            - reports/**
+
+# Variables necesarias (Repository settings → Repository variables, marcadas como Secured):
+#   BASE_URL, TEST_USERNAME, TEST_PASSWORD, MADRID_USERNAME, MADRID_PASSWORD,
+#   TESTRAIL_URL, TESTRAIL_USER, TESTRAIL_API_KEY, TESTRAIL_PROJECT_ID, TESTRAIL_ENABLED, HEADLESS

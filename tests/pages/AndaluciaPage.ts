@@ -39,6 +39,10 @@ export class AndaluciaPage extends BasePage {
   readonly noDataMessage: Locator;
   readonly rowsPerPageInput: Locator;
 
+  // Conteo capturado directamente de la respuesta de red en buscar() — null si
+  // no se pudo capturar (getTotalResultCount cae al polling del footer como fallback).
+  private lastResultCount: number | null = null;
+
   constructor(page: Page, url = '/andalucia') {
     super(page, url);
 
@@ -71,11 +75,32 @@ export class AndaluciaPage extends BasePage {
 
   async buscar(): Promise<void> {
     await test.step('Clic en BUSCAR', async () => {
-      await this.btnBuscar.click();
-      // Esperar primero a que aparezca el loader (hasta 5s), luego a que desaparezca (hasta 60s)
-      // Si nunca aparece (respuesta instantánea), ambas llamadas resuelven inmediatamente
-      const loader = this.page.locator('text=Pasito a pasito...');
+      this.lastResultCount = null;
       const loaderTimeout = process.env.CI ? 90_000 : 60_000;
+
+      // El endpoint /Buscar{And|Mad} devuelve el array completo de resultados en
+      // una sola respuesta (confirmado por diagnóstico de red) — leer el conteo
+      // directo de ahí evita el polling a ciegas del footer de paginación.
+      const [response] = await Promise.all([
+        this.page.waitForResponse(
+          resp => /\/Buscar(And|Mad)\b/i.test(resp.url()) && resp.status() === 200,
+          { timeout: loaderTimeout }
+        ).catch(() => null),
+        this.btnBuscar.click(),
+      ]);
+
+      if (response) {
+        try {
+          const data = await response.json();
+          if (Array.isArray(data)) this.lastResultCount = data.length;
+        } catch {
+          // Respuesta no parseable — getTotalResultCount() cae al polling del footer.
+        }
+      }
+
+      // Esperar a que la UI termine de pintar, para que acciones posteriores sobre
+      // la tabla (selectTableRow, etc.) encuentren el DOM ya listo.
+      const loader = this.page.locator('text=Pasito a pasito...');
       await loader.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
       await loader.waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
     });
@@ -148,6 +173,20 @@ export class AndaluciaPage extends BasePage {
   }
 
   async getTotalResultCount(): Promise<number> {
+    if (this.lastResultCount !== null) {
+      if (this.lastResultCount > 0) return this.lastResultCount;
+      // Un 0 de red es sospechoso (podría ser una captura parcial/tardía) —
+      // confirmar contra el DOM antes de confiar. Si no coincide, cae al polling.
+      const noData = await this.noDataMessage.isVisible().catch(() => false);
+      if (noData) return 0;
+    }
+    return this.getTotalResultCountByPolling();
+  }
+
+  // Fallback histórico: infiere el conteo leyendo el footer de paginación repetidas
+  // veces hasta que se estabiliza. Solo se usa si no se pudo capturar la respuesta
+  // de red en buscar() (p.ej. si algún test dispara la búsqueda sin pasar por ese método).
+  private async getTotalResultCountByPolling(): Promise<number> {
     const loaderTimeout = process.env.CI ? 90_000 : 60_000;
     const loader = this.page.locator('text=Pasito a pasito...');
     if (await loader.isVisible()) {

@@ -117,6 +117,10 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
     test.setTimeout(180_000);
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
 
+    // El footer de paginación puede actualizarse antes de que Vuetify termine
+    // de pintar las filas del tbody — esperar a que exista al menos una fila real.
+    await page.locator('tbody tr').first().waitFor({ state: 'visible', timeout: 15_000 });
+
     const codInstalacion = await page.evaluate(() => {
       const ths = Array.from(document.querySelectorAll('th'));
       const idx = ths.findIndex(th => (th as HTMLElement).innerText.trim() === 'Cod. Instalacion');

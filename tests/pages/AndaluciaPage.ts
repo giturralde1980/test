@@ -206,9 +206,13 @@ export class AndaluciaPage extends BasePage {
   }
 
   async selectTableRow(index = 0): Promise<void> {
-    await test.step(`Seleccionar fila de la tabla (índice ${index})`, () =>
-      this.page.locator('tbody .v-input--selection-controls__input').nth(index).click()
-    );
+    await test.step(`Seleccionar fila de la tabla (índice ${index})`, async () => {
+      // El footer de paginación puede actualizarse antes de que Vuetify termine
+      // de pintar las filas del tbody — esperar a que exista al menos una fila real.
+      const checkbox = this.page.locator('tbody .v-input--selection-controls__input').nth(index);
+      await checkbox.waitFor({ state: 'visible', timeout: 15_000 });
+      await checkbox.click();
+    });
   }
 
   async salir(): Promise<void> {

@@ -9,7 +9,7 @@ const path = require('path');
 const ROOT         = path.resolve(__dirname, '..');
 const XML_FILE     = path.join(ROOT, 'reports', 'junit', 'results.xml');
 const RESULTS_DIR  = path.join(ROOT, 'reports', 'test-results');
-const ENV_FILE     = path.join(ROOT, 'allure-results', 'environment.properties');
+const DOTENV_FILE  = path.join(ROOT, '.env');
 const OUTPUT_FILE  = path.join(ROOT, 'reports', 'summary_v2.html');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -35,17 +35,27 @@ function fmtTime(sec) {
   return `${m}m ${s}s`;
 }
 
-// ── Leer environment.properties ───────────────────────────────────────────────
+// ── Leer .env y derivar el entorno real de esta corrida ───────────────────────
 
 function readEnv() {
-  const env = {};
-  if (fs.existsSync(ENV_FILE)) {
-    for (const line of fs.readFileSync(ENV_FILE, 'utf8').split('\n')) {
+  const raw = {};
+  if (fs.existsSync(DOTENV_FILE)) {
+    for (const line of fs.readFileSync(DOTENV_FILE, 'utf8').split('\n')) {
       const [k, ...v] = line.split('=');
-      if (k && k.trim()) env[k.trim()] = v.join('=').trim();
+      if (k && k.trim() && !k.trim().startsWith('#')) raw[k.trim()] = v.join('=').trim();
     }
   }
-  return env;
+
+  const baseUrl = process.env.BASE_URL || raw['BASE_URL'] || '';
+  // "industria.ocaicp.com" (sin "test") es Producción; cualquier otra cosa (ej. industriatest) es QA.
+  const isProd = /^https?:\/\/industria\.ocaicp\.com\/?$/i.test(baseUrl.trim());
+
+  return {
+    Entorno:  isProd ? 'Producción' : 'QA',
+    URL:      baseUrl || '(no configurada)',
+    Usuario:  raw['TEST_USERNAME'] || '',
+    Browser:  'Chromium',
+  };
 }
 
 // ── Parsear JUnit XML ─────────────────────────────────────────────────────────

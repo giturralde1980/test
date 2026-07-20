@@ -13,6 +13,20 @@ const TR_URL     = process.env.TESTRAIL_URL      || '';
 const TR_USER    = process.env.TESTRAIL_USER     || '';
 const TR_KEY     = process.env.TESTRAIL_API_KEY  || '';
 const PROJECT_ID = parseInt(process.env.TESTRAIL_PROJECT_ID || '3', 10);
+const SUITE_ID   = parseIntOrUndefined(process.env.TESTRAIL_SUITE_ID);
+
+// Test Plans donde deben quedar agrupadas las ejecuciones de cada región.
+// Hardcodeado de momento: https://oca.testrail.io/index.php?/plans/view/141 (Andalucía)
+// y https://oca.testrail.io/index.php?/plans/view/140 (Madrid).
+const PLAN_ID_BY_REGION: Record<string, number | undefined> = {
+  TE_Andalucia: 141,
+  TE_Madrid:    140,
+};
+
+function parseIntOrUndefined(v: string | undefined): number | undefined {
+  const n = parseInt(v || '', 10);
+  return Number.isNaN(n) ? undefined : n;
+}
 
 const STATUS: Record<string, number> = {
   passed:      1,
@@ -163,6 +177,7 @@ interface PendingResult {
 
 interface RegionRun {
   runId:        number;
+  planId?:      number;
   caseToTestId: Map<number, number>;
   pending:      Map<number, PendingResult>;
 }
@@ -193,16 +208,35 @@ class TestRailReporter implements Reporter {
           continue;
         }
 
-        const name = buildRunName(prefix);
-        const run = await trFetch('POST', `add_run/${PROJECT_ID}`, {
-          name,
-          include_all: false,
-          case_ids:    caseIds,
-        }) as { id: number; name: string };
+        const name   = buildRunName(prefix);
+        const planId = PLAN_ID_BY_REGION[prefix];
 
-        console.log(`\n[TestRail] Test Run creado: "${run.name}" (ID ${run.id})`);
+        let runId: number;
+        if (planId) {
+          const entry = await trFetch('POST', `add_plan_entry/${planId}`, {
+            suite_id:    SUITE_ID,
+            name,
+            include_all: false,
+            case_ids:    caseIds,
+          }) as { runs?: Array<{ id: number }> };
 
-        const tests = await trFetch('GET', `get_tests/${run.id}`) as unknown;
+          const createdRun = entry.runs?.[0];
+          if (!createdRun) throw new Error(`add_plan_entry no devolvió ningún run para el plan ${planId}`);
+
+          runId = createdRun.id;
+          console.log(`\n[TestRail] Run "${name}" (ID ${runId}) añadido al plan ${planId}`);
+        } else {
+          const run = await trFetch('POST', `add_run/${PROJECT_ID}`, {
+            name,
+            include_all: false,
+            case_ids:    caseIds,
+          }) as { id: number; name: string };
+
+          runId = run.id;
+          console.log(`\n[TestRail] Test Run creado: "${run.name}" (ID ${run.id})`);
+        }
+
+        const tests = await trFetch('GET', `get_tests/${runId}`) as unknown;
         const testList = (
           Array.isArray(tests) ? tests : (tests as Record<string, unknown>).tests ?? []
         ) as Array<{ id: number; case_id: number }>;
@@ -210,7 +244,7 @@ class TestRailReporter implements Reporter {
         const caseToTestId = new Map<number, number>();
         for (const t of testList) caseToTestId.set(t.case_id, t.id);
 
-        this.regions.set(prefix, { runId: run.id, caseToTestId, pending: new Map() });
+        this.regions.set(prefix, { runId, planId, caseToTestId, pending: new Map() });
       } catch (e) {
         console.error(`[TestRail] Error al crear run para ${prefix}:`, (e as Error).message);
       }

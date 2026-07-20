@@ -229,6 +229,8 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
       expect(texts.every(t => t.trim().length > 0), 'Alguna opción de Delegación aparece vacía').toBe(true);
     });
 
+    await test.step(`Delegaciones cargadas: ${texts.join(', ')}`, () => {});
+
     await page.keyboard.press('Escape');
   });
 

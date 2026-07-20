@@ -34,5 +34,17 @@
   {
     "title": "Verificar que el XML generado tiene estructura y contenido válidos",
     "caseId": 54
+  },
+  {
+    "title": "Verificar que el desplegable Inspector está cargado con datos",
+    "caseId": 6153
+  },
+  {
+    "title": "Verificar que el desplegable Delegación está cargado con datos",
+    "caseId": 6154
+  },
+  {
+    "title": "Verificar que el desplegable Provincia está cargado con datos",
+    "caseId": 6155
   }
 ]

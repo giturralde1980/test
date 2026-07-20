@@ -13,7 +13,7 @@ const TR_URL     = process.env.TESTRAIL_URL      || '';
 const TR_USER    = process.env.TESTRAIL_USER     || '';
 const TR_KEY     = process.env.TESTRAIL_API_KEY  || '';
 const PROJECT_ID = parseInt(process.env.TESTRAIL_PROJECT_ID || '3', 10);
-const SUITE_ID   = parseIntOrUndefined(process.env.TESTRAIL_SUITE_ID);
+const SUITE_ID   = parseIntOrUndefined(process.env.TESTRAIL_SUITE_ID) ?? 7; // "Master", requerido por add_plan_entry
 
 // Test Plans donde deben quedar agrupadas las ejecuciones de cada región.
 // Hardcodeado de momento: https://oca.testrail.io/index.php?/plans/view/141 (Andalucía)
@@ -315,8 +315,14 @@ class TestRailReporter implements Reporter {
         console.log(`[TestRail] ${region.pending.size} resultado(s) → run ${region.runId} (${regionKey})`);
         if (screenshotsUploaded > 0) console.log(`[TestRail] ${screenshotsUploaded} screenshot(s) adjunto(s)`);
 
-        await trFetch('POST', `close_run/${region.runId}`, {});
-        console.log(`[TestRail] Run ${region.runId} (${regionKey}) cerrado.\n`);
+        if (region.planId) {
+          // Los runs que pertenecen a un plan no se pueden cerrar de forma
+          // independiente (TestRail lo rechaza con 403) — se cierran junto al plan.
+          console.log(`[TestRail] Run ${region.runId} (${regionKey}) queda abierto dentro del plan ${region.planId}.\n`);
+        } else {
+          await trFetch('POST', `close_run/${region.runId}`, {});
+          console.log(`[TestRail] Run ${region.runId} (${regionKey}) cerrado.\n`);
+        }
       } catch (e) {
         console.error(`[TestRail] Error en onEnd (${regionKey}):`, (e as Error).message);
       }

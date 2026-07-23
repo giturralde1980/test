@@ -15,13 +15,11 @@ async function setFechas(page: AndaluciaPage): Promise<void> {
   await test.step(`Informar fecha hasta: ${hasta}`, () => page.setDateViaCalendar(page.dateHasta, hasta));
 }
 
-// Extrae el valor de texto de un tag XML (primera ocurrencia)
 function xmlValue(xml: string, tag: string): string {
   const m = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
   return m ? m[1].trim() : '';
 }
 
-// Comprueba que un tag existe en el XML
 function xmlHas(xml: string, tag: string): boolean {
   return new RegExp(`<${tag}[\\s/>]`).test(xml);
 }

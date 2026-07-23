@@ -5,42 +5,32 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 export class AndaluciaPage extends BasePage {
-  // Filtros de fecha — input (para asserts) y slot (para abrir el picker)
   readonly dateDesde: Locator;
   readonly dateHasta: Locator;
   readonly dateDesdeSlot: Locator;
   readonly dateHastaSlot: Locator;
 
-  // Filtros de texto/select
-  // Nota: los IDs input-XX son generados por Vuetify y pueden cambiar;
-  // se localizan por el contenedor del label si los IDs fallan.
   readonly numeroPedido: Locator;
 
-  // Selectores Vuetify (autocomplete / combobox)
   readonly delegacion: Locator;
   readonly provincia: Locator;
   readonly inspector: Locator;
   readonly tipoTramitacion: Locator;
   readonly articulos: Locator;
 
-  // Botones de resultado
   readonly btnSinDefectos: Locator;
   readonly btnLeveAReparar: Locator;
   readonly btnGrave: Locator;
   readonly btnCritico: Locator;
 
-  // Acciones principales
   readonly btnBuscar: Locator;
   readonly btnGenerarXml: Locator;
   readonly btnSalir: Locator;
 
-  // Tabla de resultados
   readonly table: Locator;
   readonly noDataMessage: Locator;
   readonly rowsPerPageInput: Locator;
 
-  // Conteo capturado directamente de la respuesta de red en buscar() — null si
-  // no se pudo capturar (getTotalResultCount cae al polling del footer como fallback).
   private lastResultCount: number | null = null;
 
   constructor(page: Page, url = '/andalucia') {
@@ -52,7 +42,6 @@ export class AndaluciaPage extends BasePage {
     this.dateHastaSlot = page.locator('.v-input__slot:has(#dateHasta)');
     this.numeroPedido = page.locator('.v-input').filter({ hasText: /n[uú]mero de pedido/i }).locator('input').first();
 
-    // Vuetify selects — se buscan por texto del label padre
     this.delegacion = page.locator('.v-input').filter({ hasText: 'Delegación' }).locator('input').first();
     this.provincia = page.locator('.v-input').filter({ hasText: 'Provincia' }).locator('input').first();
     this.inspector = page.locator('.v-input').filter({ hasText: 'Inspector' }).locator('input').first();
@@ -78,9 +67,6 @@ export class AndaluciaPage extends BasePage {
       this.lastResultCount = null;
       const loaderTimeout = process.env.CI ? 90_000 : 60_000;
 
-      // El endpoint /Buscar{And|Mad} devuelve el array completo de resultados en
-      // una sola respuesta (confirmado por diagnóstico de red) — leer el conteo
-      // directo de ahí evita el polling a ciegas del footer de paginación.
       const [response] = await Promise.all([
         this.page.waitForResponse(
           resp => /\/Buscar(And|Mad)\b/i.test(resp.url()) && resp.status() === 200,
@@ -94,12 +80,9 @@ export class AndaluciaPage extends BasePage {
           const data = await response.json();
           if (Array.isArray(data)) this.lastResultCount = data.length;
         } catch {
-          // Respuesta no parseable — getTotalResultCount() cae al polling del footer.
         }
       }
 
-      // Esperar a que la UI termine de pintar, para que acciones posteriores sobre
-      // la tabla (selectTableRow, etc.) encuentren el DOM ya listo.
       const loader = this.page.locator('text=Pasito a pasito...');
       await loader.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
       await loader.waitFor({ state: 'hidden', timeout: loaderTimeout }).catch(() => {});
@@ -107,15 +90,11 @@ export class AndaluciaPage extends BasePage {
   }
 
   async setDateViaCalendar(inputLocator: Locator, isoDate: string): Promise<void> {
-    // Esperar que la página esté interactiva antes de tocar los date pickers
     await this.page.waitForLoadState('domcontentloaded');
-    // La secuencia que abre el picker: primero foco en el input, luego click en el slot
     const slotLocator = inputLocator === this.dateDesde ? this.dateDesdeSlot : this.dateHastaSlot;
     await inputLocator.click();
     await slotLocator.click();
 
-    // Puede haber dos .v-picker__body en el DOM (uno por campo de fecha).
-    // Buscamos el que se vuelve visible tras el click.
     const allBodies = this.page.locator('.v-picker__body');
     let pickerBody!: Locator;
     const deadline = Date.now() + 5000;
@@ -135,7 +114,6 @@ export class AndaluciaPage extends BasePage {
     const [year, month, day] = isoDate.split('-').map(Number);
 
     for (let attempt = 0; attempt < 24; attempt++) {
-      // Leer mes y año de la cabecera: ej. "enero de 2026"
       const headerText = await pickerBody
         .locator('.v-date-picker-header__value button')
         .first()
@@ -175,17 +153,12 @@ export class AndaluciaPage extends BasePage {
   async getTotalResultCount(): Promise<number> {
     if (this.lastResultCount !== null) {
       if (this.lastResultCount > 0) return this.lastResultCount;
-      // Un 0 de red es sospechoso (podría ser una captura parcial/tardía) —
-      // confirmar contra el DOM antes de confiar. Si no coincide, cae al polling.
       const noData = await this.noDataMessage.isVisible().catch(() => false);
       if (noData) return 0;
     }
     return this.getTotalResultCountByPolling();
   }
 
-  // Fallback histórico: infiere el conteo leyendo el footer de paginación repetidas
-  // veces hasta que se estabiliza. Solo se usa si no se pudo capturar la respuesta
-  // de red en buscar() (p.ej. si algún test dispara la búsqueda sin pasar por ese método).
   private async getTotalResultCountByPolling(): Promise<number> {
     const loaderTimeout = process.env.CI ? 90_000 : 60_000;
     const loader = this.page.locator('text=Pasito a pasito...');
@@ -195,22 +168,13 @@ export class AndaluciaPage extends BasePage {
     const noDataOrFooter = this.noDataMessage.or(this.page.locator('.v-data-footer__pagination'));
     await noDataOrFooter.first().waitFor({ state: 'visible', timeout: 15_000 });
 
-    // Poll hasta que el count sea estable 3 lecturas seguidas (el servidor carga en batches).
-    // 3 lecturas (×500ms = 1s de estabilidad) evita capturar lotes intermedios que
-    // coincidan en dos lecturas consecutivas antes de que llegue el último batch.
     const pollMs = process.env.CI ? 45_000 : 35_000;
-    // En CI los lotes intermedios pueden ser estables >1s; usar intervalos más largos
-    // exige 3 segundos de estabilidad real antes de aceptar el count como definitivo.
     const pollInterval = process.env.CI ? 1_000 : 500;
     const deadline = Date.now() + pollMs;
     let prevCount = -1;
     let stableStreak = 0;
     while (Date.now() < deadline) {
-      // Doble confirmación antes de devolver 0: el noDataMessage puede aparecer
-      // brevemente durante la transición post-loader antes de que los datos rendericen.
       if (await this.noDataMessage.isVisible()) {
-        // MuleSoft puede mostrar "No data" brevemente antes del primer lote.
-        // Esperar 3s y reconfirmar: si hay datos en camino, el mensaje desaparece.
         await this.page.waitForTimeout(3_000);
         if (await this.noDataMessage.isVisible()) return 0;
       }
@@ -246,8 +210,6 @@ export class AndaluciaPage extends BasePage {
 
   async selectTableRow(index = 0): Promise<void> {
     await test.step(`Seleccionar fila de la tabla (índice ${index})`, async () => {
-      // El footer de paginación puede actualizarse antes de que Vuetify termine
-      // de pintar las filas del tbody — esperar a que exista al menos una fila real.
       const checkbox = this.page.locator('tbody .v-input--selection-controls__input').nth(index);
       await checkbox.waitFor({ state: 'visible', timeout: 15_000 });
       await checkbox.click();

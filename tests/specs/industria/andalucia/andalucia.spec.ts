@@ -44,7 +44,6 @@ test.describe('Andalucía - Dashboard de inspecciones', () => {
     });
 
     test('el campo Fecha inicio desde es un date picker (readonly, con aria-haspopup)', async ({ authenticatedPage }) => {
-      // El campo es readonly — la fecha se selecciona via calendar picker
       await expect(authenticatedPage.dateDesde).toBeVisible();
       await expect(authenticatedPage.dateDesde).toHaveAttribute('readonly');
       await expect(authenticatedPage.dateDesde).toHaveAttribute('aria-haspopup', 'true');
@@ -83,10 +82,8 @@ test.describe('Andalucía - Dashboard de inspecciones', () => {
         authenticatedPage.btnCritico,
       ];
       for (const btn of buttons) {
-        // Estado inicial: sin clase activa
         await expect(btn).not.toHaveClass(/v-btn--active/);
         await btn.click();
-        // Tras el click: clase v-btn--active añadida por Vuetify
         await expect(btn).toHaveClass(/v-btn--active/);
       }
     });
@@ -104,7 +101,6 @@ test.describe('Andalucía - Dashboard de inspecciones', () => {
       await authenticatedPage.btnGrave.click();
       await expect(authenticatedPage.btnSinDefectos).toHaveClass(/v-btn--active/);
       await expect(authenticatedPage.btnGrave).toHaveClass(/v-btn--active/);
-      // Los no clickeados permanecen inactivos
       await expect(authenticatedPage.btnLeveAReparar).not.toHaveClass(/v-btn--active/);
       await expect(authenticatedPage.btnCritico).not.toHaveClass(/v-btn--active/);
     });

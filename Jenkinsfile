@@ -1,6 +1,10 @@
 pipeline {
   agent { label 'windows' }
 
+  tools {
+    nodejs 'node-lts'
+  }
+
   parameters {
     choice(name: 'REGION', choices: ['all', 'andalucia', 'madrid'], description: 'Región a ejecutar')
   }

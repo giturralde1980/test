@@ -199,7 +199,7 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el desplegable Inspector está cargado con datos', async ({ authenticatedPage, page }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C6153' });
+    test.info().annotations.push({ type: 'testrail', description: 'C55' });
     await test.step('Clic en el desplegable Inspector', () => authenticatedPage.inspector.click());
     const options = page.locator('.menuable__content__active .v-list-item__title');
     await options.first().waitFor({ state: 'visible', timeout: 8_000 });
@@ -215,7 +215,7 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el desplegable Delegación está cargado con datos', async ({ authenticatedPage, page }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C6154' });
+    test.info().annotations.push({ type: 'testrail', description: 'C56' });
     await test.step('Clic en el desplegable Delegación', () => authenticatedPage.delegacion.click());
     const options = page.locator('.menuable__content__active .v-list-item__title');
     await options.first().waitFor({ state: 'visible', timeout: 8_000 });
@@ -233,7 +233,7 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el desplegable Provincia está cargado con datos', async ({ authenticatedPage, page }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C6155' });
+    test.info().annotations.push({ type: 'testrail', description: 'C57' });
     await test.step('Clic en el desplegable Provincia', () => authenticatedPage.provincia.click());
     const options = page.locator('.menuable__content__active .v-list-item__title');
     await options.first().waitFor({ state: 'visible', timeout: 8_000 });

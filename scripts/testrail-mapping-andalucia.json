@@ -37,14 +37,14 @@
   },
   {
     "title": "Verificar que el desplegable Inspector está cargado con datos",
-    "caseId": 6153
+    "caseId": 55
   },
   {
     "title": "Verificar que el desplegable Delegación está cargado con datos",
-    "caseId": 6154
+    "caseId": 56
   },
   {
     "title": "Verificar que el desplegable Provincia está cargado con datos",
-    "caseId": 6155
+    "caseId": 57
   }
 ]

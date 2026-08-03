@@ -20,7 +20,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   test.describe.configure({ timeout: process.env.CI ? 120_000 : 90_000 });
 
   test('Verificar que la búsqueda básica por fechas con Periódicas activo devuelve 37 registros', async ({ authenticatedMadridPage }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C250' });
+    test.info().annotations.push({ type: 'testrail', description: 'C58' });
     await expect(authenticatedMadridPage.btnPeriodicas).toHaveClass(/v-btn--active/);
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
     const count = await authenticatedMadridPage.getTotalResultCount();
@@ -30,7 +30,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el filtro Corrección de Defectos + fechas devuelve 56 registros', async ({ authenticatedMadridPage }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C251' });
+    test.info().annotations.push({ type: 'testrail', description: 'C59' });
     await test.step('Clic en botón "Corrección de Defectos"', () => authenticatedMadridPage.btnCorreccionDefectos.click());
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.buscar();
@@ -41,7 +41,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el filtro Sin Defectos + fechas devuelve 17 registros', async ({ authenticatedMadridPage }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C252' });
+    test.info().annotations.push({ type: 'testrail', description: 'C60' });
     await setFechas(authenticatedMadridPage);
     await test.step('Clic en botón "SIN DEFECTOS"', () => authenticatedMadridPage.btnSinDefectos.click());
     await authenticatedMadridPage.buscar();
@@ -52,7 +52,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el filtro Leve a Reparar + fechas devuelve 0 registros y la tabla aparece vacía', async ({ authenticatedMadridPage }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C253' });
+    test.info().annotations.push({ type: 'testrail', description: 'C61' });
     await setFechas(authenticatedMadridPage);
     await test.step('Clic en botón "LEVE A REPARAR"', () => authenticatedMadridPage.btnLeveAReparar.click());
     await authenticatedMadridPage.buscar();
@@ -64,7 +64,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el filtro Grave + fechas devuelve 20 registros', async ({ authenticatedMadridPage }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C254' });
+    test.info().annotations.push({ type: 'testrail', description: 'C62' });
     await setFechas(authenticatedMadridPage);
     await test.step('Clic en botón "GRAVE"', () => authenticatedMadridPage.btnGrave.click());
     await authenticatedMadridPage.buscar();
@@ -75,7 +75,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el filtro Crítico + fechas devuelve 0 registros y la tabla aparece vacía', async ({ authenticatedMadridPage }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C255' });
+    test.info().annotations.push({ type: 'testrail', description: 'C63' });
     await setFechas(authenticatedMadridPage);
     await test.step('Clic en botón "CRÍTICO"', () => authenticatedMadridPage.btnCritico.click());
     await authenticatedMadridPage.buscar();
@@ -87,7 +87,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que la búsqueda por número de pedido + fechas devuelve resultados que incluyen ese pedido', async ({ authenticatedMadridPage, page }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C256' });
+    test.info().annotations.push({ type: 'testrail', description: 'C64' });
     await setFechas(authenticatedMadridPage);
     await test.step(`Introducir número de pedido: ${TestData.madrid.pedido}`, () =>
       authenticatedMadridPage.numeroPedido.fill(TestData.madrid.pedido)
@@ -101,7 +101,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que la búsqueda por artículo + fechas devuelve resultados', async ({ authenticatedMadridPage }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C257' });
+    test.info().annotations.push({ type: 'testrail', description: 'C65' });
     await setFechas(authenticatedMadridPage);
     await authenticatedMadridPage.setArticulo(TestData.madrid.articulo);
     await authenticatedMadridPage.buscar();
@@ -112,7 +112,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que Generar DBF descarga un ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación', async ({ authenticatedMadridPage, page }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C258' });
+    test.info().annotations.push({ type: 'testrail', description: 'C66' });
     test.skip(!!process.env.CI, 'Descarga HTTP bloqueada por Chrome en CI — ejecutar en local');
     test.setTimeout(180_000);
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
@@ -159,7 +159,7 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
   });
 
   test('Verificar que el desplegable Inspector está cargado con datos', async ({ authenticatedMadridPage, page }) => {
-    test.info().annotations.push({ type: 'testrail', description: 'C259' });
+    test.info().annotations.push({ type: 'testrail', description: 'C67' });
     await test.step('Clic en el desplegable Inspector', () => authenticatedMadridPage.inspector.click());
     const options = page.locator('.menuable__content__active .v-list-item__title');
     await options.first().waitFor({ state: 'visible', timeout: 8_000 });

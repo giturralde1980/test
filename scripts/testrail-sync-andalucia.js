@@ -11,7 +11,7 @@ const path = require('path');
 const TR_URL     = process.env.TESTRAIL_URL;
 const TR_USER    = process.env.TESTRAIL_USER;
 const TR_KEY     = process.env.TESTRAIL_API_KEY;
-const PROJECT_ID = 3; // Web
+const PROJECT_ID = 2; // Web
 
 const AUTH = Buffer.from(`${TR_USER}:${TR_KEY}`).toString('base64');
 

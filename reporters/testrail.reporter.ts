@@ -12,15 +12,15 @@ import * as path from 'path';
 const TR_URL     = process.env.TESTRAIL_URL      || '';
 const TR_USER    = process.env.TESTRAIL_USER     || '';
 const TR_KEY     = process.env.TESTRAIL_API_KEY  || '';
-const PROJECT_ID = parseInt(process.env.TESTRAIL_PROJECT_ID || '3', 10);
-const SUITE_ID   = parseIntOrUndefined(process.env.TESTRAIL_SUITE_ID) ?? 7; // "Master", requerido por add_plan_entry
+const PROJECT_ID = parseInt(process.env.TESTRAIL_PROJECT_ID || '2', 10);
+const SUITE_ID   = parseIntOrUndefined(process.env.TESTRAIL_SUITE_ID) ?? 6; // "Master", requerido por add_plan_entry
 
 // Test Plans donde deben quedar agrupadas las ejecuciones de cada región.
-// Hardcodeado de momento: https://oca.testrail.io/index.php?/plans/view/141 (Andalucía)
-// y https://oca.testrail.io/index.php?/plans/view/140 (Madrid).
+// Hardcodeado de momento: https://ocaglobalit.testrail.io/index.php?/plans/view/13 (Andalucía)
+// y https://ocaglobalit.testrail.io/index.php?/plans/view/15 (Madrid).
 const PLAN_ID_BY_REGION: Record<string, number | undefined> = {
-  TE_Andalucia: 141,
-  TE_Madrid:    140,
+  TE_Andalucia: 13,
+  TE_Madrid:    15,
 };
 
 function parseIntOrUndefined(v: string | undefined): number | undefined {

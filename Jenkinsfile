@@ -1,5 +1,5 @@
 pipeline {
-  agent { label 'SVJenkinsWin' }
+  agent { label 'windows' }
 
   parameters {
     choice(name: 'REGION', choices: ['all', 'andalucia', 'madrid'], description: 'Región a ejecutar')

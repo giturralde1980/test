@@ -19,6 +19,8 @@ pipeline {
   stages {
     stage('Install') {
       steps {
+        bat 'node -v && npm -v'
+        bat 'npm cache clean --force'
         bat 'npm ci'
         bat 'npx playwright install --with-deps chromium'
       }

@@ -1,8 +1,5 @@
 # Guía completa del proyecto — QA Automation Industria
 
-> Última actualización: 2026-08-03
-> Pensada para que alguien nuevo en el proyecto (junior o no) pueda entenderlo de punta a punta sin tener que preguntar nada más.
-
 ---
 
 ## Índice

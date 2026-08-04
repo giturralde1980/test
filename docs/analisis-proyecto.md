@@ -1,102 +1,181 @@
-# Análisis Técnico y Funcional — Proyecto QA Automation Industria
+# Guía completa del proyecto — QA Automation Industria
 
-> Generado: 2026-07-02  
-> Entorno: `http://industriatest.ocaicp.com`  
-> Stack: Playwright 1.60+ · TypeScript · GitHub Actions (self-hosted) · TestRail
+> Última actualización: 2026-08-03
+> Pensada para que alguien nuevo en el proyecto (junior o no) pueda entenderlo de punta a punta sin tener que preguntar nada más.
 
 ---
 
-## 1. Arquitectura general
+## Índice
+
+1. [Qué es este proyecto](#1-qué-es-este-proyecto)
+2. [Puesta en marcha (de cero a corriendo tests)](#2-puesta-en-marcha-de-cero-a-corriendo-tests)
+3. [Estructura de carpetas](#3-estructura-de-carpetas)
+4. [Cómo está armado el código](#4-cómo-está-armado-el-código)
+5. [Qué prueba cada archivo de test](#5-qué-prueba-cada-archivo-de-test)
+6. [El repo: Bitbucket](#6-el-repo-bitbucket)
+7. [Cómo se ejecutan los tests — 3 formas distintas](#7-cómo-se-ejecutan-los-tests--3-formas-distintas)
+8. [Integración con TestRail](#8-integración-con-testrail)
+9. [Problemas conocidos y por qué pasan](#9-problemas-conocidos-y-por-qué-pasan)
+10. [Comandos más usados (chuleta rápida)](#10-comandos-más-usados-chuleta-rápida)
+11. [Cosas pendientes / mejoras sugeridas](#11-cosas-pendientes--mejoras-sugeridas)
+
+---
+
+## 1. Qué es este proyecto
+
+Es una suite de **tests automatizados end-to-end** (E2E) para la aplicación web "Industria" de OCA, que gestiona inspecciones. La app tiene dos módulos/regiones independientes con su propia URL y su propio usuario de acceso:
+
+- **Andalucía** (`/andalucia`)
+- **Madrid** (`/madrid`)
+
+Los tests abren un navegador Chrome de verdad (vía Playwright), inician sesión, navegan por la app, aplican filtros de búsqueda, y comprueban que los resultados (conteos de registros, contenido de desplegables, ficheros descargados) sean los esperados. Todo simula lo que haría una persona probando la app a mano, pero automatizado.
+
+**Stack:**
+- [Playwright](https://playwright.dev/) — framework de automatización de navegador
+- TypeScript
+- Chromium (único navegador soportado — ver [BUG-07](#bug-07--date-picker-en-firefox-headless-no-funciona))
+- [TestRail](https://www.testrail.io/) — donde queda registrado el resultado de cada ejecución (pasó/falló, con capturas)
+
+**Entorno contra el que corren los tests:** `http://industriatest.ocaicp.com/` — es un entorno de **test**, no de producción, accesible solo desde la red corporativa (intranet) o VPN.
+
+---
+
+## 2. Puesta en marcha (de cero a corriendo tests)
+
+### Requisitos
+- Node.js 18 o superior (¡importante! ver la nota de Jenkins más abajo sobre por qué esto no es opcional)
+- npm 9+
+- Estar conectado a la red corporativa o VPN (la app es intranet)
+
+### Instalación
+
+```bash
+git clone <url-del-repo>
+cd industria
+npm install
+npx playwright install chromium
+```
+
+### Configurar variables de entorno
+
+Copiar el archivo de ejemplo y completar los valores reales:
+
+```bash
+cp .env.example .env
+```
+
+Variables que hay que rellenar en `.env` (nunca se suben al repo, está en `.gitignore`):
+
+| Variable | Para qué | Puede estar vacía |
+|---|---|---|
+| `BASE_URL` | URL del entorno de test (`http://industriatest.ocaicp.com/`) | No |
+| `TEST_USERNAME` | Usuario de Andalucía | No |
+| `TEST_PASSWORD` | Password de Andalucía | **Sí** — el entorno de test no siempre lo pide |
+| `MADRID_USERNAME` | Usuario de Madrid | No |
+| `MADRID_PASSWORD` | Password de Madrid | **Sí**, mismo caso |
+| `HEADLESS` | `true`/`false` — si el navegador se ve o no al correr en local | — |
+| `TESTRAIL_URL` | URL de la instancia de TestRail | Solo si `TESTRAIL_ENABLED=false` |
+| `TESTRAIL_USER` | Usuario de TestRail (API) | Solo si `TESTRAIL_ENABLED=false` |
+| `TESTRAIL_API_KEY` | API Key de TestRail (se genera en *Mi perfil → API Keys*) | Solo si `TESTRAIL_ENABLED=false` |
+| `TESTRAIL_PROJECT_ID` | ID del proyecto en TestRail | Puede dejarse vacío, tiene default en código |
+| `TESTRAIL_SUITE_ID` | ID de la suite en TestRail | Puede dejarse vacío, tiene default en código |
+| `TESTRAIL_ENABLED` | `true` para que los resultados se suban a TestRail, `false` para no molestar a nadie mientras probás en local | — |
+
+> Los IDs de TestRail (proyecto, suite, planes) están **hardcodeados** en el código además de leerse de `.env` — ver la sección de [TestRail](#8-integración-con-testrail) para entender por qué.
+
+### Correr los tests
+
+```bash
+npm run test:andalucia   # solo Andalucía
+npm run test:madrid      # solo Madrid
+npm test                 # todo (incluye specs de estructura de UI, más lento)
+```
+
+> **Si PowerShell bloquea los scripts de npm** (`no se puede cargar el archivo... porque la ejecución de scripts está deshabilitada`), usar `cmd /c "npm run test:andalucia"` o correr una vez:
+> ```powershell
+> Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+> ```
+
+### Ver el reporte de una corrida
+
+```bash
+npm run report
+```
+
+Esto abre `reports/html/index.html` en el navegador, vía un mini servidor local. **Importante:** nunca abrir ese `index.html` haciendo doble-click desde el explorador de archivos — el reporte usa JavaScript moderno (`<script type="module">`) que los navegadores bloquean por CORS cuando se abre como archivo local (`file://`). Por eso existe el comando `npm run report`, que lo sirve por HTTP y ahí sí funciona.
+
+---
+
+## 3. Estructura de carpetas
 
 ```
 industria/
 ├── .github/workflows/
-│   └── playwright.yml          # Pipeline CI — 2 jobs paralelos (Andalucía / Madrid)
+│   └── playwright.yml              # legacy, sin uso — el repo de trabajo es solo Bitbucket
+├── bitbucket-pipelines.yml         # CI vía Bitbucket Pipelines (self-hosted runner)
+├── Jenkinsfile                     # CI vía Jenkins (agente dentro de la red corporativa)
 ├── reporters/
-│   └── testrail.reporter.ts    # Reporter custom: crea runs por región, sube resultados
+│   └── testrail.reporter.ts        # Reporter custom: crea runs en TestRail y sube resultados
 ├── scripts/
-│   ├── testrail-sync-andalucia.js      # Sincroniza casos C46-C54 con TestRail
-│   ├── testrail-sync-madrid.js         # Sincroniza casos C250-C258 con TestRail
-│   ├── testrail-mapping-andalucia.json # Mapeo caseId ↔ título (Andalucía)
-│   ├── testrail-mapping-madrid.json    # Mapeo caseId ↔ título (Madrid)
-│   ├── testrail-verify.js              # Verifica conectividad con TestRail
-│   ├── testrail-list-suites.js         # Lista suites del proyecto TestRail
-│   ├── generate-summary.js             # Genera resumen de resultados
-│   ├── allure-setup.js                 # Setup para reports Allure
-│   └── xray-import.ts                  # Import alternativo a Xray (no activo)
+│   ├── testrail-sync-andalucia.js  # Crea/sincroniza los casos de Andalucía en TestRail
+│   ├── testrail-sync-madrid.js     # Ídem para Madrid
+│   ├── testrail-mapping-andalucia.json  # Mapeo título ↔ caseId (se regenera con el script de sync)
+│   ├── testrail-mapping-madrid.json
+│   ├── testrail-verify.js          # Verifica conectividad con TestRail
+│   ├── testrail-list-suites.js     # Lista suites de un proyecto TestRail
+│   ├── generate-summary.js / generate-summary-v2.js  # Genera un resumen HTML de resultados
+│   ├── allure-setup.js             # Setup de Allure (reporter comentado, no activo)
+│   └── xray-import.ts              # Import alternativo a Jira Xray (no activo, ver package.json script `test:xray`)
 ├── tests/
 │   ├── fixtures/
-│   │   └── base.fixture.ts     # Fixtures: loginPage, andaluciaPage, authenticatedPage, authenticatedMadridPage
+│   │   └── base.fixture.ts         # Fixtures de Playwright: loginPage, authenticatedPage, authenticatedMadridPage
 │   ├── helpers/
-│   │   └── test-data.ts        # Datos de prueba centralizados (credenciales, fechas, totales esperados)
-│   ├── pages/
-│   │   ├── BasePage.ts         # Clase base abstracta: navigate(), waitForPageLoad(), takeScreenshot()
-│   │   ├── LoginPage.ts        # POM login: userInput, passwordInput, loginButton, login()
-│   │   ├── AndaluciaPage.ts    # POM Andalucía: locators, buscar(), setDateViaCalendar(), getTotalResultCount()
-│   │   └── MadridPage.ts       # POM Madrid: extiende AndaluciaPage, override date pickers, btnPeriodicas, btnGenerarDbf
+│   │   └── test-data.ts            # Datos de prueba centralizados (credenciales, fechas, totales esperados)
+│   ├── pages/                      # Page Object Model
+│   │   ├── BasePage.ts             # Clase base: navigate(), waitForPageLoad(), takeScreenshot()
+│   │   ├── LoginPage.ts            # POM del login
+│   │   ├── AndaluciaPage.ts        # POM de Andalucía (el más grande y complejo)
+│   │   └── MadridPage.ts           # POM de Madrid — extiende AndaluciaPage
 │   ├── specs/
-│   │   ├── login.spec.ts                              # Tests de login (7 casos)
+│   │   ├── login.spec.ts                          # Tests de login (7 casos)
 │   │   └── industria/
 │   │       ├── andalucia/
-│   │       │   ├── andalucia.spec.ts                  # Tests UI/estructura Andalucía (~22 casos)
-│   │       │   └── andalucia-busqueda.spec.ts         # Tests búsqueda + descargas Andalucía (C46-C54)
+│   │       │   ├── andalucia.spec.ts               # Tests de estructura/UI (27 casos) — NO corren en CI
+│   │       │   └── andalucia-busqueda.spec.ts       # Tests funcionales de búsqueda (12 casos, con TestRail)
 │   │       └── madrid/
-│   │           ├── madrid.spec.ts                     # Tests UI/estructura Madrid (~16 casos)
-│   │           └── madrid-busqueda.spec.ts            # Tests búsqueda + descarga DBF Madrid (C250-C258)
+│   │           ├── madrid.spec.ts                  # Tests de estructura/UI (17 casos) — NO corren en CI
+│   │           └── madrid-busqueda.spec.ts          # Tests funcionales de búsqueda (10 casos, con TestRail)
 │   ├── utils/
-│   │   ├── explore.ts                  # Script exploración (no forma parte de la suite)
-│   │   └── explore-datepicker.spec.ts  # Spec debug date picker (no forma parte de la suite)
-│   └── global-setup.ts                 # Global setup comentado (storageState no funciona con esta app)
-├── playwright.config.ts        # Configuración Playwright
-└── package.json                # Dependencias y scripts npm
+│   │   ├── explore.ts                   # Script de exploración manual, no es un test
+│   │   └── explore-datepicker.spec.ts   # Spec de diagnóstico del date picker, mantener por si hace falta debuguear
+│   └── global-setup.ts             # ⚠️ Comentado en playwright.config.ts, no está en uso (ver más abajo por qué)
+├── docs/
+│   └── analisis-proyecto.md        # Este documento
+├── playwright.config.ts            # Configuración central de Playwright
+├── tsconfig.json
+├── package.json
+├── .env / .env.example
+└── .gitignore
 ```
 
 ---
 
-## 2. Stack tecnológico
+## 4. Cómo está armado el código
 
-| Herramienta | Versión | Uso |
-|---|---|---|
-| `@playwright/test` | ^1.60.0 | Framework de automatización E2E |
-| TypeScript | ^6.0.3 | Lenguaje principal |
-| dotenvx | ^17.4.2 | Gestión de variables de entorno / secretos |
-| adm-zip | ^0.5.18 | Validación de contenido de ZIPs (test C258) |
-| allure-playwright | ^3.10.2 | Reporter Allure (comentado, no activo) |
-| cross-env | ^10.1.0 | Variables de entorno cross-platform |
-| xunit-viewer | ^10.6.1 | Generación de summary HTML desde JUnit XML |
-| ts-node | ^10.9.2 | Ejecución de scripts TS directamente |
-| GitHub Actions | — | CI/CD con runner self-hosted en Windows |
-| TestRail (Web ID 3) | — | Gestión de casos y resultados de test |
+### 4.1 Configuración de Playwright (`playwright.config.ts`)
 
----
+Puntos que no son obvios a simple vista:
 
-## 3. Configuración Playwright (`playwright.config.ts`)
+- **`workers: 1`** — aunque `fullyParallel: true` está activado, `workers: 1` fuerza a que los tests corran **de a uno**, nunca en paralelo. Es intencional: el backend de la app no tolera bien peticiones concurrentes con distintas sesiones.
+- **`retries: 1`** — cada test que falla se reintenta una vez automáticamente, tanto en local como en CI. Esto no es solo por flakiness genérica: mitiga un problema real de "cold-start" del backend (ver [BUG-01](#bug-01--cold-start-del-backend)).
+- **`baseURL: process.env.BASE_URL || 'http://industria.ocaicp.com'`** — ojo que el fallback **no** tiene "test" en el nombre. Si `BASE_URL` no está bien seteado (por ejemplo, falta como secret en CI), los tests apuntan a un entorno distinto al esperado y fallan de forma confusa (ver sección de troubleshooting).
+- **`globalSetup` está comentado** (línea muerta a propósito, con el comentario explicando por qué): la app usa sesión de servidor, y el mecanismo de `storageState` de Playwright (guardar cookies/localStorage para reusar sesión entre tests) no funciona con esta app — el archivo guarda 0 cookies y 0 localStorage. Por eso cada test hace login desde cero vía las fixtures (`authenticatedPage` / `authenticatedMadridPage`), en vez de reusar una sesión guardada.
+- **Reporters activos:** `html`, `junit`, `list` (consola) y el reporter custom de TestRail. `allure-playwright` está comentado, no activo.
+- **`screenshot: 'only-on-failure'`** — solo se capturan pantallazos cuando un test falla, para no saturar TestRail con adjuntos innecesarios (ver la memoria del bug `$test_count` de TestRail más abajo).
 
-```
-testDir:        ./tests
-testMatch:      **/*.spec.ts
-fullyParallel:  true
-workers:        1              ← serialización forzada (backend no soporta concurrencia)
-retries:        1              ← siempre activo (local y CI)
-timeout:        CI → 120s / local → 30s  (global)
-headless:       true salvo HEADLESS=false
-acceptDownloads: true
-launchOptions:  --disable-download-restrictions, --safebrowsing-disable-download-protection
-```
+### 4.2 Page Object Model
 
-**Reporters activos:** `html`, `junit`, `list`, `testrail.reporter.ts`  
-**Reporter inactivo:** `allure-playwright` (comentado)
-
-**Notas importantes:**
-- `workers: 1` es intencional: el backend MuleSaft/Salesforce no tolera peticiones concurrentes con la misma sesión.
-- `timeout` global de 30s en local es bajo; los describe blocks sobrecargan con `test.describe.configure({ timeout: 60s/90s/120s })`.
-- Los flags de Chrome para descarga (`--disable-download-restrictions`) no tienen efecto en modo headless con HTTP — son ignorados por Chrome 111+.
-
----
-
-## 4. Patrón Page Object Model
-
-### Jerarquía de clases
+Jerarquía de clases:
 
 ```
 BasePage (abstracta)
@@ -105,565 +184,249 @@ BasePage (abstracta)
         └── MadridPage
 ```
 
-### BasePage
-Clase base mínima. Provee `navigate()`, `waitForPageLoad()`, `takeScreenshot()`. Sin locators propios.
+- **`BasePage`** — mínima, solo provee `navigate()`, `waitForPageLoad()`, `takeScreenshot()`.
+- **`LoginPage`** — localiza por IDs fijos (`#user`, `#password`). El método `login()` navega, rellena usuario (y password si no está vacío), clickea LOGIN y espera a que la red esté quieta.
+- **`AndaluciaPage`** — la clase más grande del proyecto. Tiene los locators de todos los filtros y botones, y varios métodos con lógica no trivial:
+  - **`buscar()`** — clickea BUSCAR y, en paralelo, escucha la respuesta HTTP real del endpoint de búsqueda para capturar el conteo de resultados directo de la red (más confiable que leer el footer de la tabla, que puede mostrar un conteo parcial mientras cargan los datos por lotes).
+  - **`setDateViaCalendar()`** — el método más complicado del proyecto. Abre el date picker de Vuetify, lee el mes/año mostrado en el header (en español, ej: "enero de 2026"), y navega mes a mes con los botones de flecha hasta llegar al día correcto (hasta 24 intentos).
+  - **`getTotalResultCount()`** — primero intenta usar el conteo capturado de la red en `buscar()`; si no hay uno disponible, cae a un polling del footer de paginación (`.v-data-footer__pagination`), exigiendo 2 lecturas consecutivas idénticas antes de confiar en el número (para evitar leer un lote parcial).
+- **`MadridPage`** — hereda de `AndaluciaPage`. Como los date pickers de Madrid no tienen IDs fijos (a diferencia de Andalucía), sus locators se reconstruyen en el constructor buscando por el texto del label. Agrega `btnPeriodicas`, `btnCorreccionDefectos`, `btnGenerarDbf`.
 
-### LoginPage
-Localiza por IDs estáticos (`#user`, `#password`). El método `login()` navega, rellena y hace click; luego espera `networkidle`. La contraseña es opcional (la app de pruebas no siempre la requiere).
+### 4.3 Fixtures (`base.fixture.ts`)
 
-### AndaluciaPage
-La clase más compleja del proyecto. Contiene:
+| Fixture | Qué hace |
+|---|---|
+| `loginPage` | Da un `LoginPage` sin loguear |
+| `andaluciaPage` | Da un `AndaluciaPage` sin loguear |
+| `authenticatedPage` | Loguea con las credenciales de Andalucía y da un `AndaluciaPage` ya listo |
+| `authenticatedMadridPage` | Loguea con las credenciales de Madrid y da un `MadridPage` ya listo |
 
-- **Locators de fecha** — `dateDesde` / `dateHasta` (inputs `#dateDesde`, `#dateHasta`) y sus slots para abrir el picker.
-- **Locators de filtro** — `numeroPedido`, `delegacion`, `inspector`, `tipoTramitacion`, `articulos`.
-- **Botones de resultado** — `btnSinDefectos`, `btnLeveAReparar`, `btnGrave`, `btnCritico`.
-- **Botones de acción** — `btnBuscar`, `btnGenerarXml`.
-- **`buscar()`** — hace clic en BUSCAR y espera que el loader `text=Pasito a pasito...` aparezca y desaparezca (hasta 60s/90s CI).
-- **`setDateViaCalendar()`** — método más complejo del proyecto. Abre el Vuetify date picker, navega mes a mes comparando el header (texto en español "enero de 2026"), y hace clic en el día correcto. Soporta hasta 24 intentos de navegación.
-- **`getTotalResultCount()`** — lee el footer de paginación Vuetify (`.v-data-footer__pagination`, patrón `of N`). Implementa polling con estabilización: requiere 2 lecturas consecutivas idénticas antes de devolver el valor. Deadline: 35s local / 45s CI.
-- **`setArticulo()`** — abre el autocomplete Vuetify, escribe el valor y selecciona la primera opción del menú.
+Todas son **por test** (no compartidas): cada test arranca con un browser context nuevo y limpio. Esto importa para los retries — cuando un test se reintenta, arranca de cero, no arrastra estado del intento anterior.
 
-### MadridPage
-Extiende `AndaluciaPage`. Los date pickers de Madrid tienen IDs generados por Vuetify (no estáticos), por lo que los locators se sobreescriben en el constructor usando labels: `.v-input:has-text("Fecha inicio inspección...desde")`. Añade `btnPeriodicas`, `btnCorreccionDefectos`, `btnGenerarDbf`.
+### 4.4 Test Data (`test-data.ts`)
 
-**Punto de atención técnico:** el override de locators `readonly` se hace con `(this as any).dateDesde = ...`, lo que rompe la seguridad de tipos de TypeScript.
+Centraliza los datos de prueba: credenciales (leídas de `.env`, nunca hardcodeadas), fechas de búsqueda (`2026-01-08` a `2026-01-09`), y **los totales esperados de cada filtro** (ej: "Sin Defectos debería devolver 100 registros").
 
----
-
-## 5. Fixtures (`base.fixture.ts`)
-
-| Fixture | Tipo | Descripción |
-|---|---|---|
-| `loginPage` | test-scoped | LoginPage sin autenticar |
-| `andaluciaPage` | test-scoped | AndaluciaPage sin autenticar |
-| `authenticatedPage` | test-scoped | Login con credenciales Andalucía → AndaluciaPage lista |
-| `authenticatedMadridPage` | test-scoped | Login con credenciales Madrid → MadridPage lista |
-
-Todas son **test-scoped**: cada test arranca con un browser context nuevo, sesión limpia. Esto es importante para el comportamiento del retry: cuando un test se reintenta, obtiene un contexto completamente nuevo (no reutiliza el anterior).
+**Punto importante:** esos totales son números fijos que se corresponden con los datos que había en el entorno de test en el momento en que se escribieron los tests. Como es un entorno de test (no productivo), los datos cambian con el tiempo (se agregan o borran inspecciones), así que estos números **se desactualizan solos** y hay que revisarlos de vez en cuando — no es un bug del código cuando un test de conteo falla, hay que verificar primero si el dato de referencia sigue siendo correcto.
 
 ---
 
-## 6. Test Data (`test-data.ts`)
+## 5. Qué prueba cada archivo de test
 
-Centraliza todos los datos de prueba:
-- **Credenciales** — leídas de variables de entorno (`TEST_USERNAME`, `TEST_PASSWORD`, `MADRID_USERNAME`, `MADRID_PASSWORD`). Nunca hardcodeadas.
-- **Fechas** — `2026-01-08` a `2026-01-09` (rango fijo de 2 días para ambas regiones).
-- **Totales esperados** — valores absolutos fijos que deben coincidir con el backend en esas fechas.
-- **Pedidos y artículos** — números específicos para validar búsquedas por campo.
-- **Headers de tabla** — listas completas de columnas esperadas para Andalucía y Madrid.
+### `login.spec.ts` — 7 casos
+Formulario visible, título de página, login válido redirige a `/andalucia`, el campo usuario acepta texto, login sin usuario se queda en la pantalla de login, botón habilitado, etc. Tests de UI básica del login.
 
----
+### `andalucia.spec.ts` / `madrid.spec.ts` — 27 / 17 casos
+Tests de **estructura y UI**: que los filtros estén visibles, que los botones cambien de estado al clickear, que la tabla tenga las columnas correctas, que el mensaje de "sin datos" aparezca, etc. **No hacen búsquedas reales con conteos** y **no están conectados a TestRail** (no tienen anotaciones `testrail`) ni se ejecutan en ningún CI — solo corren con `npm test` (todos los specs juntos).
 
-## 7. Suite de tests
+### `andalucia-busqueda.spec.ts` — 12 casos (TestRail C46-C57)
+Los tests "de verdad" — cada uno hace una búsqueda real contra el backend y compara el resultado contra un valor esperado:
 
-### 7.1 Login (`login.spec.ts`) — 7 casos
+| Test | Qué verifica |
+|---|---|
+| Búsqueda por fechas | Conteo exacto de registros |
+| Filtro Sin Defectos / Leve a Reparar / Grave / Crítico | Conteo exacto por cada filtro |
+| Búsqueda por número de pedido | Al menos 1 resultado, y que el pedido aparezca en la tabla |
+| Búsqueda por artículo | Conteo exacto |
+| Generar XML (descarga) | Nombre del archivo correcto — **se salta en CI**, ver [BUG-03](#bug-03--descargas-bloqueadas-en-ci) |
+| XML generado — estructura y contenido | Valida 15 etiquetas obligatorias + reglas de contenido — también se salta en CI |
+| Desplegables Inspector / Delegación / Provincia | Que tengan datos cargados, ninguno vacío |
 
-| # | Caso | Tipo |
-|---|---|---|
-| 1 | Formulario visible (user, pass, button) | UI |
-| 2 | Título de página "INDUSTRIA" | UI |
-| 3 | Login válido redirige a /andalucia | Funcional |
-| 4 | Campo usuario acepta texto | UI |
-| 5 | Login sin usuario permanece en login | Validación |
-| 6 | Botón LOGIN habilitado | UI |
-| 7 | Login con usuario inválido → alerta "Campos en blanco." | Validación |
-
-### 7.2 Andalucía UI (`andalucia.spec.ts`) — ~22 casos
-
-Agrupados en 6 describes:
-- **Carga inicial**: URL, título, botón SALIR
-- **Filtros de búsqueda**: visibilidad de fechas, pedido, delegación, inspector, tipo tramitación, artículos
-- **Botones de resultado**: count exacto (4), textos, toggle, multi-selección
-- **Botones de acción**: BUSCAR (visible/habilitado), GENERAR XML (visible/habilitado), validación sin selección
-- **Desplegables**: Tipo tramitación con ALTA/RESULTADO, Inspector y Delegación no vacíos
-- **Tabla**: presente, columnas correctas, "No data available", selector de filas/página
-- **Navegación**: SALIR redirige a login
-
-### 7.3 Andalucía Búsqueda (`andalucia-busqueda.spec.ts`) — 9 casos (C46-C54)
-
-| Caso TestRail | Test | Estado CI |
-|---|---|---|
-| C46 | Búsqueda básica 08-09 ene → 165 registros | ✅ activo |
-| C47 | Filtro Sin Defectos → 100 registros | ✅ activo |
-| C48 | Filtro Leve a Reparar → 33 registros | ✅ activo |
-| C49 | Filtro Grave → 32 registros | ✅ activo |
-| C50 | Filtro Crítico → 0 registros + tabla vacía | ✅ activo |
-| C51 | Búsqueda por pedido → resultado incluye ese pedido | ✅ activo |
-| C52 | Búsqueda por artículo → 6 registros | ✅ activo |
-| C53 | Generar XML → descarga `SIOCA_YYYYMMDD_HHMMSS.xml` | ⛔ skip en CI |
-| C54 | XML generado tiene estructura y contenido válidos | ⛔ skip en CI |
-
-### 7.4 Madrid UI (`madrid.spec.ts`) — ~16 casos
-
-Espejo funcional de `andalucia.spec.ts` adaptado a Madrid:
-- **Carga inicial**: URL `/madrid`, encabezado "INDUSTRIA MADRID"
-- **Filtros de tipo de actuación**: Periódicas activo por defecto, Corrección de defectos exclusivo
-- **Filtros de búsqueda**: fechas, pedido, artículos
-- **Botones de resultado**: visibilidad y estado habilitado
-- **Botones de acción**: BUSCAR visible/habilitado, búsqueda sin filtros no da error
-- **Tabla**: presente, columnas correctas, selector de filas
-- **Navegación**: SALIR redirige a login
-
-### 7.5 Madrid Búsqueda (`madrid-busqueda.spec.ts`) — 9 casos (C250-C258)
-
-| Caso TestRail | Test | Estado CI |
-|---|---|---|
-| C250 | Búsqueda con Periódicas → 37 registros | ✅ activo |
-| C251 | Corrección de Defectos → 56 registros | ✅ activo |
-| C252 | Sin Defectos → 17 registros | ✅ activo |
-| C253 | Leve a Reparar → 0 registros + tabla vacía | ✅ activo |
-| C254 | Grave → 20 registros | ✅ activo |
-| C255 | Crítico → 0 registros + tabla vacía | ✅ activo |
-| C256 | Búsqueda por pedido → resultado incluye ese pedido | ✅ activo |
-| C257 | Búsqueda por artículo → resultados > 0 | ✅ activo |
-| C258 | Generar DBF → ZIP con `certificadoFirmado_` y `CertificadoSellado_` | ⛔ skip en CI |
+### `madrid-busqueda.spec.ts` — 10 casos (TestRail C58-C67)
+Mismo espíritu que Andalucía, adaptado a Madrid: filtros de tipo de actuación (Periódicas / Corrección de Defectos), conteos por filtro de resultado, búsqueda por pedido/artículo, descarga de ZIP con certificados (DBF, se salta en CI), y desplegable de Inspector (Madrid **no tiene** tests de Delegación/Provincia — no está confirmado si esos campos existen en su UI, solo que nadie los testeó).
 
 ---
 
-## 8. Reporter TestRail (`testrail.reporter.ts`)
+## 6. El repo: Bitbucket
 
-### Ciclo de vida
+El único repo que importa para este proyecto es:
+
+**`bitbucket`** → `https://bitbucket.org/oca-global/oca-industria-automation-tests.git`
+
+Ahí vive el equipo, ahí corre el CI de verdad (Bitbucket Pipelines), y es el que hay que usar siempre. Rama principal: `main` (no `master`).
+
+> Nota histórica: en algún momento el repo también se mantuvo espejado en un GitHub personal del autor original, con un método de sincronización manual (cherry-pick) para no reescribir historiales. Eso ya **no hace falta** — no es parte del flujo de trabajo del equipo, solo Bitbucket importa.
+
+---
+
+## 7. Cómo se ejecutan los tests — 3 formas distintas
+
+### 7.1 En local
+`npm run test:andalucia` / `npm run test:madrid` / `npm test`, como se explicó en la sección 2.
+
+### 7.2 Bitbucket Pipelines (`bitbucket-pipelines.yml`)
+- Pipelines **custom** (no se disparan solos con cada push, hay que lanzarlos manualmente desde la pestaña Pipelines de Bitbucket, eligiendo `andalucia`, `madrid` o `all`).
+- Requiere un runner self-hosted con acceso a la red corporativa/VPN, corriendo como un **servicio de Windows** (`bitbucket-runner\bin\run-loop.ps1`) — por eso queda siempre levantado sin que nadie tenga que arrancarlo a mano.
+- Variables necesarias como *Repository variables* en Bitbucket (Settings → Pipelines → Repository variables): `BASE_URL`, `TEST_USERNAME`, `TEST_PASSWORD`, `MADRID_USERNAME`, `MADRID_PASSWORD`, `TESTRAIL_URL`, `TESTRAIL_USER`, `TESTRAIL_API_KEY`, `TESTRAIL_ENABLED`, `HEADLESS`.
+
+### 7.3 Jenkins (`Jenkinsfile`) — agregado el 2026-08-03
+Se agregó como alternativa a los dos anteriores porque **ambos runners self-hosted viven en la laptop personal de un desarrollador que se va de la empresa**, y ese runner depende de que esa persona tenga la VPN activa. Jenkins, en cambio, corre en un agente (`SVJenkinsWin`, Windows Server 2022) que ya está **dentro de la red corporativa** — no depende de la laptop de nadie ni de VPN.
+
+**Cómo está configurado:**
+- `agent { label 'windows' }` — label genérico (no el nombre puntual del nodo).
+- `tools { nodejs 'node-lts' }` — **crítico**. El Node del sistema operativo en `SVJenkinsWin` es v14 con npm 6, demasiado viejo para este proyecto (el `package-lock.json` usa `lockfileVersion: 3`, que pide npm 7+; y Playwright directamente requiere Node 18+). Sin este bloque, `npm ci` falla con un error muy poco claro: `Cannot read property '@playwright/test' of undefined` — no menciona la versión de Node para nada, así que si eso vuelve a pasar, lo primero a revisar es esto.
+- Checkout del repo (Bitbucket) por **HTTPS con un Repository Access Token** (no SSH): en la cuenta de Bitbucket usada no había opción de generar App Passwords, y por SSH fallaba con "Host key verification failed" porque nadie con permisos de admin de Jenkins estaba disponible para agregar la host key de `bitbucket.org` al `known_hosts` del agente. El token se genera en **el repo → Repository settings → Access Tokens**, con scope únicamente `Repositories: Read`. En Jenkins la credencial es tipo *Username with password*: usuario `x-token-auth` (fijo), password = el token.
+- Parámetro `REGION` (`all` / `andalucia` / `madrid`), mismo criterio que Bitbucket Pipelines.
+- Credenciales necesarias en Jenkins (tipo **Secret text**, con estos IDs exactos porque así los referencia el Jenkinsfile): `industria-base-url`, `industria-test-username`, `industria-madrid-username`, `industria-testrail-url`, `industria-testrail-user`, `industria-testrail-api-key`. **No hace falta** crear credenciales de password (`TEST_PASSWORD`/`MADRID_PASSWORD`) — están vacías en `.env` y el login las soporta como opcionales.
+- El stage `Install` (`npm cache clean --force`, `npm ci`, `npx playwright install --with-deps chromium`) corre siempre, en todos los builds, sin importar el `REGION` elegido.
+- **Primer build:** ~3 minutos (todo desde cero). **Builds siguientes:** ~20 segundos, porque Jenkins no borra el workspace entre builds — `node_modules` y el navegador Chromium quedan cacheados en disco.
+- **Ver el reporte HTML desde Jenkins no funciona bien directo en el navegador** — Jenkins aplica una Content-Security-Policy a los artifacts servidos que bloquea la ejecución de JS embebido, así que al abrir el `index.html` desde el visor de artifacts se ve el código fuente crudo en pantalla en vez del reporte. Y si se descarga y se abre como archivo local (doble-click), queda en blanco por el mismo motivo de CORS explicado en la sección 2. La forma de verlo bien: descargar la carpeta `reports/html` del build y correr `npm run report` localmente apuntando a esa carpeta. Solución permanente pendiente: plugin **HTML Publisher** de Jenkins (necesita admin).
+
+---
+
+## 8. Integración con TestRail
+
+> ⚠️ **TestRail requiere un plan pago para uso continuo.** Sin una suscripción, la instancia usada es efectivamente temporal (trial/demo) — cada vez que se necesite volver a usar TestRail habrá que repetir el alta desde cero: registrar un usuario nuevo (con su email), crear una instancia nueva, y generar un API Token nuevo. Todo lo que está documentado en esta sección (URL, IDs de proyecto/suite/planes) **va a cambiar** la próxima vez que esto pase, y hay que repetir el [checklist de migración](#checklist-para-migrar-a-otra-instanciaproyecto-de-testrail-ya-se-hizo-una-vez) de abajo. Si el equipo quiere usar TestRail de forma estable y permanente, la única forma es pagar una licencia.
+
+### Instancia actual (desde 2026-08-03)
+
+Se migró a una instancia nueva para cerrar una demo:
+
+- **URL:** `https://ocaglobalit.testrail.io`
+- **Proyecto:** "Web", ID `2`
+- **Suite:** "Master", ID `6`
+- **Test Plan Andalucía:** ID `13`
+- **Test Plan Madrid:** ID `15`
+
+> Antes se usaba `oca.testrail.io` (proyecto "Web" ID `3`). Si en algún momento se ve un `.env` apuntando a esa URL vieja, hay que verificar si el cambio fue intencional o un error.
+
+**Estos IDs están hardcodeados en `reporters/testrail.reporter.ts`** (decisión explícita: no crear variables de entorno nuevas para esto, todo en código, con fallback si `.env` no las trae):
+
+```typescript
+const PROJECT_ID = parseInt(process.env.TESTRAIL_PROJECT_ID || '2', 10);
+const SUITE_ID   = parseIntOrUndefined(process.env.TESTRAIL_SUITE_ID) ?? 6;
+const PLAN_ID_BY_REGION = {
+  TE_Andalucia: 13,
+  TE_Madrid:    15,
+};
+```
+
+### Cómo funciona el reporter (ciclo de vida)
 
 ```
 onBegin()
-  → detectRegions(suite)          # Auto-detecta regiones por ruta de fichero
-  → por cada región:
-      → getCaseIdsForRegion()     # Lee mapping JSON de scripts/
-      → add_run (TestRail API)    # Crea run "TE_Andalucia_YYYYMMDD_HHMM_LOC/CI"
-      → get_tests                 # Obtiene case_id → test_id
+  → detecta qué regiones hay en los tests que van a correr (por ruta de archivo)
+  → por cada región, si hay un Test Plan asociado:
+      → add_plan_entry (crea un run DENTRO del plan)
+    si no hay plan asociado:
+      → add_run (crea un run suelto, comportamiento antiguo, sigue existiendo como fallback)
 
-onTestEnd() (por cada test)
-  → busca anotación type='testrail'
-  → extrae case_id del string 'CXX'
-  → detecta región por ruta de fichero
-  → guarda en pending Map (sobreescribe si es retry)
+onTestEnd() (por cada test que termina)
+  → busca la anotación type='testrail' → extrae el número de caso (ej: 'C58')
+  → guarda el resultado en memoria (si el test se reintenta, el segundo resultado pisa al primero)
 
 onEnd()
   → por cada región:
-      → add_result por cada pending
-      → add_attachment_to_result (screenshot si existe)
-      → close_run
+      → sube todos los resultados a TestRail (add_result)
+      → sube capturas de pantalla de los que fallaron
+      → si el run pertenece a un plan, NO lo cierra (TestRail no lo permite — da 403.
+        "This test run belongs to a test plan and cannot be closed independently")
+      → si es un run suelto (sin plan), sí lo cierra (close_run)
 ```
 
-### Detección de región
+### Mapeo de casos (título ↔ número de TestRail)
 
-- Si `TESTRAIL_RUN_PREFIX` está definido → usa ese prefijo, crea 1 run.
-- Si no → escanea rutas de ficheros de todos los tests en el suite:
-  - Solo Andalucía → `['TE_Andalucia']`
-  - Solo Madrid → `['TE_Madrid']`
-  - Ambos → `['TE_Andalucia', 'TE_Madrid']` — **crea 2 runs independientes**
-
-### Nombre del run
-
-```
-TE_Andalucia_20260702_1040_LOC  (local)
-TE_Madrid_20260702_1104_CI      (CI)
-```
-
-### Manejo de retries
-
-El `pending` es un `Map<case_id, PendingResult>`. Si un test se reintenta, el segundo resultado sobreescribe el primero. Solo se envía el resultado final a TestRail.
-
----
-
-## 9. Pipeline CI/CD (`.github/workflows/playwright.yml`)
-
-### Triggers
-
-- **`workflow_dispatch`**: lanzamiento manual desde GitHub UI, con selector de región (`all` / `andalucia` / `madrid`).
-- **`repository_dispatch`**: lanzamiento desde sistemas externos (Jira, Postman, etc.) con `event_type: run-tests` y `client_payload.region`.
-
-### Jobs
-
-| Job | Condición | Runner |
-|---|---|---|
-| `test-andalucia` | Región ≠ `madrid` | self-hosted |
-| `test-madrid` | Región ≠ `andalucia` | self-hosted |
-
-Ambos jobs corren **en paralelo** cuando se lanza `all`. Cada uno:
-1. `checkout` con `clean: true` (descarta cualquier fichero residual)
-2. `npm ci` (instalación reproducible)
-3. `npx playwright install --with-deps chromium` (instala browser)
-4. Ejecuta el script correspondiente con secretos de GitHub
-5. Sube `reports/` como artefacto (`retention-days: 7`)
-
-### Variables de entorno en CI
-
-| Secret | Uso |
-|---|---|
-| `BASE_URL` | URL del entorno de test |
-| `TEST_USERNAME` / `TEST_PASSWORD` | Credenciales Andalucía |
-| `MADRID_USERNAME` / `MADRID_PASSWORD` | Credenciales Madrid |
-| `TESTRAIL_URL` / `TESTRAIL_USER` / `TESTRAIL_API_KEY` | TestRail API |
-| `TESTRAIL_PROJECT_ID` | ID proyecto TestRail (Web, ID 3) |
-| `TESTRAIL_ENABLED` | Flag `true`/`false` para activar el reporter |
-
----
-
-## 10. Bugs y problemas encontrados durante el desarrollo
-
-Esta sección documenta todos los problemas significativos encontrados, su causa raíz, impacto y solución aplicada.
-
----
-
-### BUG-01 — Cold-start del backend (MuleSoft/Salesforce)
-
-**Descripción:**
-El backend de la aplicación (MuleSoft/Salesforce) tiene un comportamiento de "cold-start": cuando no ha recibido peticiones durante un período, la primera petición tarda entre 30 y 45 segundos en responder. Las peticiones siguientes son rápidas (<5s).
-
-**Impacto:**
-- C46 (Andalucía, primer test de la suite) y C250 (Madrid, primer test) fallan frecuentemente con resultado `0` porque el polling lee antes de que el servidor devuelva datos.
-- El fallo es intermitente: solo ocurre cuando el servidor está frío, no en cada ejecución.
-
-**Comportamiento observado:**
-```
-Attempt 1: Expected 165, Received 0    ← servidor frío
-Retry #1:  Expected 165, Received 165  ← servidor caliente tras el primer intento
-```
-
-**Causa raíz:** El estado "frío/caliente" es global en el servidor. Cualquier petición (incluso la fallida del primer intento) calienta el servidor para las siguientes.
-
-**Solución aplicada:**
-- `retries: 1` siempre activo → el primer intento calienta el servidor; el retry ya tiene respuesta rápida.
-- Polling extendido: 35s local / 45s CI en `getTotalResultCount()`.
-
-**Limitación residual:** Si el cold-start supera 45s (casos extremos), el retry también fallará. No hay garantía del 100%.
-
----
-
-### BUG-02 — Lectura de count parcial (batch loading)
-
-**Descripción:**
-El servidor devuelve los resultados de búsqueda en batches. El paginador Vuetify actualiza el texto `of N` con el count parcial antes de que carguen todos los registros.
-
-**Impacto:**
-- Tests fallan con valores ligeramente incorrectos aunque los datos en el servidor son correctos.
-- Ejemplos observados: `98` en lugar de `100`, `163` en lugar de `165`.
-- El fallo es **consistente** en las mismas condiciones (no es aleatorio), lo que lo diferencia del BUG-01.
-
-**Causa raíz:** La lógica original de `getTotalResultCount()` usaba:
-```typescript
-if (count > 0) return count; // ← salía en el primer valor > 0
-```
-El primer batch llegaba con 98 registros, el código lo devolvía inmediatamente, y los 2 restantes llegaban milisegundos después.
-
-**Solución aplicada:**
-```typescript
-// Requiere 2 lecturas consecutivas idénticas
-if (count > 0 && count === prevCount) return count;
-prevCount = count;
-```
-Añade máximo 500ms de espera extra por test (un tick de confirmación).
-
----
-
-### BUG-03 — Descarga de ficheros HTTP bloqueada en CI (headless)
-
-**Descripción:**
-Chrome 111+ en modo headless bloquea las descargas de ficheros sobre HTTP (sin TLS). Los tests C53, C54 (XML Andalucía) y C258 (DBF Madrid) fallan en CI porque el entorno de test usa HTTP sin certificado.
-
-**Impacto:** 3 tests de 18 no pueden ejecutarse en CI.
-
-**Intentos fallidos:**
-- `--disable-download-restrictions` en `launchOptions` → ignorado en headless.
-- `--safebrowsing-disable-download-protection` → ignorado en headless.
-- Cambiar a `headless: false` en CI → no viable en runner self-hosted sin display.
-
-**Causa raíz:** Cambio de seguridad de Chrome introducido en v111 que no tiene bypass para descargas HTTP en modo headless. Es una restricción del navegador, no de Playwright.
-
-**Solución aplicada:**
-```typescript
-test.info().annotations.push({ type: 'testrail', description: 'C53' }); // ANTES del skip
-test.skip(!!process.env.CI, 'Descarga HTTP bloqueada por Chrome en CI — ejecutar en local');
-```
-- Pasan en local con `HEADLESS=false`.
-- En CI aparecen como `skipped` en TestRail (status 2).
-- **Importante:** la anotación TestRail debe ir ANTES de `test.skip()`, de lo contrario el reporter no la captura.
-
-**Mitigación alternativa no implementada:** Montar un proxy HTTPS terminador en el runner self-hosted o configurar el entorno de test con TLS.
-
----
-
-### BUG-04 — Reporter crea run único "TE_Industria" al lanzar ambas regiones juntas
-
-**Descripción:**
-Al ejecutar los dos spec files en un mismo proceso Playwright, el reporter detectaba ficheros de ambas regiones y creaba un único run "TE_Industria" con los 18 casos combinados en lugar de 2 runs separados.
-
-**Impacto:** Los resultados de Andalucía y Madrid se mezclaban en un único run de TestRail, perdiendo la trazabilidad por región.
-
-**Causa raíz:** `detectRegion()` devolvía un único string y creaba un único run:
-```typescript
-if (hasMadrid && !hasAndalucia) return 'TE_Madrid';
-if (hasAndalucia && !hasMadrid) return 'TE_Andalucia';
-return 'TE_Industria'; // ← fallback al detectar ambas
-```
-
-**Solución aplicada:** Refactoring completo del reporter para soportar múltiples runs:
-- `detectRegions()` devuelve `string[]` (un elemento por región detectada).
-- `RegionRun` agrupa `runId + caseToTestId + pending` por región.
-- `onTestEnd()` enruta cada resultado al run correcto usando la ruta del fichero de test.
-- `onEnd()` cierra cada run de forma independiente.
-
----
-
-### BUG-05 — `beforeAll` de warm-up causó regresión en resultados
-
-**Descripción:**
-Se intentó resolver BUG-01 mediante un `beforeAll` que hacía login y ejecutaba una búsqueda antes de los tests. La aproximación produjo una regresión grave: múltiples tests devolvían 0 resultados a pesar de que el servidor estaba caliente.
-
-**Causa raíz (reconstruida):**
-El `beforeAll` abre un browser context, navega al date picker, ejecuta una búsqueda y cierra el context. El estado del date picker queda en caché a nivel del proceso Playwright. Cuando los tests posteriores usan `setDateViaCalendar()` en sus propios contexts, el picker percibe que ya está en el mes correcto y completa en ~2s (sin verdadera navegación), pero la búsqueda devuelve 0 porque el estado de la página no está listo.
-
-**Solución aplicada:** Revertir completamente el `beforeAll`. La estrategia de retry (BUG-01) es suficiente.
-
----
-
-### BUG-06 — `test.describe.configure({ timeout })` no aplica a `beforeAll`
-
-**Descripción:**
-Al añadir el `beforeAll` de warm-up, se asumía que heredaría el timeout del describe (60s/90s). En realidad, los hooks `beforeAll`/`afterAll` usan el **timeout global** (30s en local), no el del describe.
-
-**Causa raíz:** Comportamiento de Playwright: `test.describe.configure({ timeout })` aplica solo a los tests dentro del describe, no a los hooks.
-
-**Solución aplicada (mientras existió el beforeAll):**
-```typescript
-test.beforeAll(async () => {
-  test.setTimeout(120_000); // override explícito dentro del hook
-  // ...
-});
-```
-
----
-
-### BUG-07 — Date picker de Firefox con `display:none` en headless
-
-**Descripción:**
-Los botones de navegación del Vuetify date picker (Previous/Next month) tienen `display:none` en Firefox en modo headless. `force:true` no funciona porque el elemento no tiene dimensiones de layout. `dispatchEvent('click')` se intentó pero tampoco funcionó de forma fiable.
-
-**Impacto:** No se pudo ejecutar la suite en Firefox headless.
-
-**Causa raíz:** Comportamiento específico de Vuetify + Firefox headless donde los botones del picker se ocultan con `display:none` hasta que hay interacción.
-
-**Solución aplicada:** El proyecto usa exclusivamente Chrome. Firefox queda fuera de la cobertura de browsers.
-
----
-
-### BUG-08 — MadridPage usa `(this as any)` para override de locators readonly
-
-**Descripción:**
-`MadridPage` necesita sobreescribir los locators de fecha heredados de `AndaluciaPage` (porque Madrid no tiene IDs estáticos). Los locators son `readonly` en TypeScript, por lo que el override se hace con un cast forzado:
-```typescript
-(this as any).dateDesde = fechaDesde.locator('input').first();
-```
-
-**Impacto:** Pérdida de type-safety. Un cambio en los nombres de las propiedades en `AndaluciaPage` no daría error en tiempo de compilación para `MadridPage`.
-
-**Estado:** Funciona en runtime pero es técnicamente una deuda.
-
----
-
-## 11. Posibles mejoras
-
-### 11.1 Arquitectura y código
-
-**[ALTA] Refactorizar herencia MadridPage / AndaluciaPage**
-`MadridPage extends AndaluciaPage` es funcional pero conceptualmente incorrecto: Madrid no es un tipo especializado de Andalucía. El acoplamiento obliga a usar `(this as any)` para el override de date pickers.
-
-*Alternativa recomendada:* Extraer una clase intermedia `IndustriaBasePage extends BasePage` con los locators como `protected` (no `readonly`), y hacer que tanto `AndaluciaPage` como `MadridPage` extiendan `IndustriaBasePage` con sus propias implementaciones.
-
----
-
-**[ALTA] Solución permanente para descargas en CI**
-
-Las tres opciones ordenadas por viabilidad:
-
-1. **TLS en el entorno de test** — configurar certificado HTTPS en `industriatest.ocaicp.com`. Chrome no bloquea descargas HTTPS. Es la solución correcta a largo plazo.
-2. **Runner con display virtual** — usar `xvfb` + `headless: false` en el runner self-hosted Linux para evitar las restricciones de headless. No aplica en el runner actual (Windows sin display).
-3. **Test de integración de API** — en lugar de descargar via UI, llamar directamente al endpoint que genera el XML/DBF y validar el contenido. Evita el problema del browser completamente.
-
----
-
-**[MEDIA] Aumentar timeout de describe para Andalucía en local**
-
-El timeout del describe de Andalucía en local es 60s. Con cold-start (35s polling) + overhead de setup, un test puede acercarse al límite. Subir a 90s en local para alinearlo con Madrid.
+Los archivos `scripts/testrail-mapping-andalucia.json` y `-madrid.json` mapean el título de cada test con su ID real en TestRail. Cada test en el código tiene una anotación con ese ID:
 
 ```typescript
-test.describe.configure({ timeout: process.env.CI ? 120_000 : 90_000 });
+test.info().annotations.push({ type: 'testrail', description: 'C58' });
 ```
+
+**Si el número en esa anotación no coincide con el mapping, el resultado de ese test simplemente no llega a TestRail — sin ningún error visible.** Esto ya pasó dos veces en este proyecto: cuando se agregaron tests nuevos (los de desplegables) sin correr el script de sync, y de nuevo al migrar de instancia (los números de Madrid cambiaron de C250-C259 a C58-C67, aunque los de Andalucía coincidieron por casualidad).
+
+**Números actuales:**
+- Andalucía: C46 a C57
+- Madrid: C58 a C67
+
+### Checklist para migrar a otra instancia/proyecto de TestRail (ya se hizo una vez)
+
+1. Crear el proyecto nuevo en la instancia (`add_project`, modo single-suite).
+2. Actualizar la constante `PROJECT_ID` **dentro de** `scripts/testrail-sync-andalucia.js` y `scripts/testrail-sync-madrid.js` (es una variable local en cada script, no viene de `.env`).
+3. Correr ambos scripts (`node scripts/testrail-sync-andalucia.js`, ídem madrid) — crean las secciones y los casos, y regeneran los JSON de mapping.
+4. Actualizar las anotaciones `C##` en `andalucia-busqueda.spec.ts` y `madrid-busqueda.spec.ts` para que coincidan con los IDs nuevos que salieron del paso anterior (casi nunca son los mismos números que antes).
+5. Crear los Test Plans "Andalucia" y "Madrid" con `add_plan`, incluyendo los `case_ids` del mapping en sus `entries`.
+6. Actualizar `PROJECT_ID` / `SUITE_ID` / `PLAN_ID_BY_REGION` en `reporters/testrail.reporter.ts`.
+7. Correr una vez en local con `TESTRAIL_ENABLED=true` y confirmar que los resultados aparecen en el plan correcto antes de dar el cambio por cerrado.
+
+### Otras cosas a tener en cuenta
+
+- `add_plan_entry` **exige** `suite_id` en el body (a diferencia de `add_run`, que no lo pide) — si falta, tira `400 Field :suite_id is a required field`.
+- Hay un bug conocido, **ajeno a este reporter**, en la interfaz de TestRail: al abrir cualquier run aparece el mensaje `Undefined variable $test_count`. Se investigó a fondo y es un bug del propio SaaS (relacionado a un adjunto duplicado que devuelve la propia API de TestRail), no algo que este código esté causando. Se redujo el volumen de adjuntos (ya no se sube captura en los tests que pasan, solo en los que fallan) para no estresar esa parte del backend, pero el mensaje puede seguir apareciendo — no perder tiempo re-investigándolo si vuelve a aparecer.
 
 ---
 
-**[MEDIA] Eliminar `(this as any)` en MadridPage**
+## 9. Problemas conocidos y por qué pasan
 
-Cambiar los locators de AndaluciaPage a `protected` (en lugar de `readonly`) para que las subclases puedan sobreescribirlos sin romper el sistema de tipos:
+### BUG-01 — Cold-start del backend
 
-```typescript
-// AndaluciaPage
-protected dateDesde: Locator;
-protected dateDesdeSlot: Locator;
-// ...
+El backend (MuleSoft/Salesforce) tarda 30-45s en responder la primera petición después de estar inactivo. Los siguientes pedidos son rápidos. Esto hace que el primer test de cada suite (el de conteo por fechas) falle con `0` registros si el servidor estaba "frío".
 
-// MadridPage — sin cast
-this.dateDesde = fechaDesde.locator('input').first();
-```
+**Mitigación:** `retries: 1` — el primer intento (aunque falle) calienta el servidor, así que el reintento ya responde rápido. No es 100% infalible si el cold-start tarda más de lo que dura el polling.
+
+### BUG-02 — Conteo parcial por carga en lotes
+
+El servidor devuelve los resultados en tandas. El footer de paginación de Vuetify se actualiza con el conteo parcial antes de que terminen de llegar todos los lotes, así que leer el número una sola vez puede dar un valor de menos (ej: 98 en vez de 100).
+
+**Solución:** `getTotalResultCount()` exige 2 lecturas consecutivas idénticas antes de confiar en el número.
+
+### BUG-03 — Descargas bloqueadas en CI
+
+Chrome 111+ en modo headless bloquea las descargas por HTTP (sin TLS), y el entorno de test no tiene HTTPS. Los tests que descargan archivos (XML de Andalucía, ZIP de Madrid) se saltan automáticamente en CI (`test.skip(!!process.env.CI, ...)`) y solo se ejecutan en local con `HEADLESS=false`.
+
+**Importante:** la anotación de TestRail tiene que ir **antes** del `test.skip()` en el código, si no el reporter no la captura y el test ni figura como "skipped" en TestRail.
+
+### BUG-07 — Date picker en Firefox headless no funciona
+
+Los botones de navegación del date picker de Vuetify quedan con `display:none` en Firefox headless, y ni `force:true` ni `dispatchEvent` lo solucionan de forma confiable. Por eso el proyecto usa **exclusivamente Chromium**.
+
+### BUG-08 — `MadridPage` usa `(this as any)` para pisar locators
+
+`MadridPage` necesita sobreescribir los locators de fecha heredados de `AndaluciaPage` (que son `readonly` en TypeScript), así que lo hace con un cast forzado que rompe la seguridad de tipos. Funciona en runtime, es deuda técnica — ver sugerencia de refactor en la sección 11.
+
+### Problemas del setup de hoy (2026-08-03), por si se repiten
+
+- **`npm ci` falla con `Cannot read property '@playwright/test' of undefined`** → casi siempre es una versión de npm demasiado vieja (<7) leyendo un `package-lock.json` con `lockfileVersion: 3`. Revisar `node -v && npm -v` en el agente/máquina donde corre.
+- **Reporte HTML de Playwright se ve como código fuente crudo, o queda en blanco** → ver sección 7.3, es un tema de CSP de Jenkins (código crudo) o de CORS al abrir un archivo local (blanco). Usar siempre `npm run report`.
+- **Tests fallan TODOS en el mismo punto (login)** → revisar primero si hay VPN/red corporativa activa (la app es intranet) antes de sospechar del código.
+- **Tests fallan en el mismo punto pero DESPUÉS del login (ej: no encuentra ningún botón del dashboard)** → sospechar de credenciales mal cargadas en el CI (usuario/URL equivocados), no del entorno — comparar corriendo la misma suite en local con el mismo `.env` para descartar que sea un problema real de la app.
 
 ---
 
-**[MEDIA] Añadir `.env.example` con todas las variables requeridas**
-
-No existe un fichero de referencia para onboarding. Un desarrollador nuevo no sabe qué variables de entorno necesita configurar.
+## 10. Comandos más usados (chuleta rápida)
 
 ```bash
-BASE_URL=http://industriatest.ocaicp.com
-TEST_USERNAME=
-TEST_PASSWORD=
-MADRID_USERNAME=
-MADRID_PASSWORD=
-TESTRAIL_URL=
-TESTRAIL_USER=
-TESTRAIL_API_KEY=
-TESTRAIL_PROJECT_ID=3
-TESTRAIL_ENABLED=false
+# Instalación inicial
+npm install
+npx playwright install chromium
+
+# Correr tests
+npm run test:andalucia
+npm run test:madrid
+npm test                        # todo, incluye specs de estructura de UI
+npm run test:headed             # con navegador visible
+npm run test:debug              # paso a paso
+
+# Ver reportes
+npm run report                  # reporte HTML interactivo (¡nunca abrir el .html directo!)
+npm run report:summary          # genera y abre un summary.html a partir del JUnit XML
+
+# TestRail
+node scripts/testrail-sync-andalucia.js   # crea/sincroniza casos de Andalucía
+node scripts/testrail-sync-madrid.js      # ídem Madrid
+node scripts/testrail-list-suites.js 2    # lista suites del proyecto (2 = proyecto "Web" actual)
+node scripts/testrail-verify.js           # verifica que las credenciales de TestRail conectan
 ```
 
 ---
 
-**[MEDIA] Separar `andalucia.spec.ts` y `madrid.spec.ts` del npm run test**
+## 11. Cosas pendientes / mejoras sugeridas
 
-Los specs de UI estructural (`andalucia.spec.ts`, `madrid.spec.ts`, `login.spec.ts`) no están incluidos en `test:andalucia` ni `test:madrid`, y tampoco tienen casos TestRail asignados. Se ejecutan solo con `npm test` (todos los specs). Esto crea inconsistencia: en CI nunca se ejecutan los tests de UI estructural.
+Ordenadas por impacto, no por orden de cuándo se detectaron:
 
-*Solución:* Añadirlos al CI como un job separado `test-ui` o integrarlos en los jobs existentes, y asignarles casos TestRail.
-
----
-
-**[BAJA] Reemplazar `page.waitForTimeout()` por waits explícitos**
-
-En varios lugares del código se usan waits fijos que son frágiles:
-- `login.spec.ts` línea 45: `page.waitForTimeout(1000)` — debería esperar al `.v-alert` visible.
-- `andalucia.spec.ts`: `page.waitForTimeout(400)` en tests de desplegables — debería usar `waitFor({ state: 'visible' })` en las opciones del menú.
-
----
-
-**[BAJA] Añadir validación de entorno al arrancar**
-
-Si `TEST_USERNAME` está vacío, el test de login falla con un mensaje poco claro. Añadir validación al inicio:
-
-```typescript
-// global-setup.ts (ya existe pero está comentado)
-if (!process.env.TEST_USERNAME) throw new Error('TEST_USERNAME no configurado');
-```
-
----
-
-**[BAJA] Cache de navegadores en el runner self-hosted**
-
-El job CI instala Chromium en cada ejecución con `npx playwright install --with-deps chromium`. En un runner self-hosted esto es redundante si la versión de Playwright no cambia.
-
-*Solución:* Añadir cache de `~/.cache/ms-playwright` condicionado al hash de `package-lock.json`:
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: ~/.cache/ms-playwright
-    key: playwright-${{ hashFiles('package-lock.json') }}
-```
-
----
-
-### 11.2 Cobertura funcional
-
-**[ALTA] Tests de paginación**
-No existe ningún test que valide la paginación de la tabla:
-- Navegar de página 1 a página 2.
-- Cambiar el tamaño de página (10/25/50 registros).
-- Verificar que el count del footer es consistente entre páginas.
-
----
-
-**[ALTA] Tests de combinación de filtros**
-Los tests actuales validan cada filtro de forma aislada. Casos sin cobertura:
-- Sin Defectos + Pedido (combinado).
-- Grave + Artículo (combinado).
-- Múltiples filtros de resultado activos simultáneamente.
-
----
-
-**[MEDIA] Validación de rango de fechas**
-No existe test que verifique el comportamiento cuando `desde > hasta` o cuando se deja una fecha vacía.
-
----
-
-**[MEDIA] Tests de búsqueda por Delegación, Inspector, Tipo de tramitación**
-Los tests de `andalucia.spec.ts` verifican que estos campos son visibles y tienen opciones, pero ningún test de búsqueda los usa como filtro activo.
-
----
-
-**[MEDIA] Test negativo de XML/DBF con selección vacía en Madrid**
-`andalucia.spec.ts` tiene un test para "GENERAR XML sin selección → alerta". Madrid no tiene el equivalente para "GENERAR DBF sin selección".
-
----
-
-**[BAJA] Test de descarga XML en local como smoke test separado**
-C53/C54 se saltan en CI pero se ejecutan en local. Sería útil tenerlos marcados en TestRail de forma diferenciada (p.ej., como "Requiere entorno HTTP local") en lugar de simplemente "skipped".
-
----
-
-**[BAJA] Test del botón SALIR desde Andalucía y Madrid**
-Existe el test, pero solo valida la URL. Podría ampliarse para verificar que la sesión queda invalidada (intentar acceder a `/andalucia` después de salir redirige a login).
-
----
-
-### 11.3 Operacional
-
-**[ALTA] Notificaciones de resultado de CI**
-No hay ningún mecanismo de notificación cuando el pipeline falla. Añadir un paso de notificación (email, Slack, Teams) en el job de CI para que el equipo sepa inmediatamente cuando hay fallos.
-
-```yaml
-- name: Notify on failure
-  if: failure()
-  uses: 8398a7/action-slack@v3
-  with:
-    status: ${{ job.status }}
-```
-
----
-
-**[MEDIA] Limpiar scripts no utilizados / experimentos**
-
-Los siguientes ficheros están en el repo pero no forman parte de la suite activa:
-- `scripts/xray-import.ts` — integración Xray alternativa, no activa.
-- `scripts/allure-setup.js` — Allure comentado en config.
-- `tests/utils/explore.ts` y `tests/utils/explore-datepicker.spec.ts` — scripts de debug.
-- `tests/global-setup.ts` — comentado, no en uso.
-
-Se recomienda moverlos a una carpeta `_lab/` o eliminarlos para reducir ruido en el repositorio.
-
----
-
-**[MEDIA] Documentar el proceso de actualización de TestData**
-
-Cuando los datos del entorno cambian (nuevas inspecciones añadidas al rango de fechas de prueba), los valores hardcodeados en `TestData.busquedas.totales` y `TestData.madrid.totales` quedan desactualizados y todos los tests de count fallan. No hay ningún proceso documentado para detectar y actualizar estos valores.
-
-*Sugerencia:* Añadir un script `scripts/validate-testdata.js` que haga las búsquedas vía API del backend y compare los resultados con los valores en `test-data.ts`, generando una alerta si difieren.
-
----
-
-**[BAJA] Retención de artefactos CI**
-
-Los reports se guardan 7 días. Para proyectos con ejecuciones diarias esto puede ser insuficiente para análisis de tendencias. Valorar subir a 30 días o exportar a un sistema de almacenamiento persistente.
-
----
-
-## 12. Resumen ejecutivo
-
-| Área | Estado actual | Riesgo |
-|---|---|---|
-| Cobertura Andalucía (C46-C52) | ✅ 7/7 activos y estables | Bajo |
-| Cobertura Madrid (C250-C257) | ✅ 8/8 activos y estables | Bajo |
-| Descargas (C53, C54, C258) | ⛔ Skip en CI, pasan en local | Medio — no hay cobertura automática en CI |
-| Cold-start backend | ⚠️ Mitigado con retry + polling 45s | Medio — posible fallo si >45s |
-| Batch loading (count parcial) | ✅ Resuelto con estabilización | Bajo |
-| Reporter TestRail | ✅ Multi-región, sufijo CI/LOC | Bajo |
-| Pipeline CI | ✅ 2 jobs paralelos, self-hosted | Bajo |
-| Type safety MadridPage | ⚠️ `(this as any)` en locators | Bajo (funcional, deuda técnica) |
-| Cobertura UI estructural | ⚠️ No incluida en CI | Medio |
-| Documentación onboarding | ❌ Sin `.env.example` | Bajo-Medio |
+- **Refactor de `MadridPage extends AndaluciaPage`** — conceptualmente Madrid no es un "tipo de" Andalucía. Cambiar los locators de `AndaluciaPage` de `readonly` a `protected` para que `MadridPage` los pueda sobreescribir sin el cast `(this as any)`.
+- **Solución permanente para las descargas bloqueadas en CI** — la opción más limpia a largo plazo es poner TLS/HTTPS en el entorno de test; mientras tanto, se podría probar/validar el archivo generado llamando directo al endpoint de la API en vez de descargarlo vía UI.
+- **Los specs de estructura de UI (`andalucia.spec.ts`, `madrid.spec.ts`, `login.spec.ts`) no corren en ningún CI** — solo con `npm test` local. Si se quiere que su cobertura cuente para algo formal, habría que agregarlos a algún job de CI y darles anotaciones de TestRail (hoy no tienen).
+- **Proceso para mantener actualizados los totales esperados en `test-data.ts`** — hoy no hay ningún aviso automático cuando el entorno de test cambia sus datos y los conteos hardcodeados quedan desactualizados. Se podría armar un script que compare contra la API del backend y avise si difieren.
+- **Instalar el plugin HTML Publisher en Jenkins** (requiere admin) para poder ver el reporte de Playwright directo en el navegador sin tener que descargarlo.
+- **Eliminar `.github/workflows/playwright.yml`** si definitivamente no se va a volver a usar GitHub — hoy queda como archivo muerto en el repo.
+- **Revisar si conviene mantener los dos caminos de CI** (Bitbucket Pipelines y Jenkins) a largo plazo, o consolidar en uno solo una vez que quede claro cuál es el más estable/accesible para el equipo que se queda con el proyecto.

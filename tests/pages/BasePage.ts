@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 export abstract class BasePage {
   protected readonly page: Page;
@@ -15,13 +15,5 @@ export abstract class BasePage {
 
   async waitForPageLoad(): Promise<void> {
     await this.page.waitForLoadState('networkidle');
-  }
-
-  async getTitle(): Promise<string> {
-    return this.page.title();
-  }
-
-  async takeScreenshot(name: string): Promise<void> {
-    await this.page.screenshot({ path: `reports/screenshots/${name}.png`, fullPage: true });
   }
 }

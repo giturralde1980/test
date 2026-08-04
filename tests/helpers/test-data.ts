@@ -14,8 +14,8 @@ export const TestData = {
   busquedas: {
     fechas: { desde: '2026-01-08', hasta: '2026-01-09' },
     totales: {
-      porFechas:    165,
-      sinDefectos:  100,
+      porFechas:    163,
+      sinDefectos:   98,
       leve:          33,
       grave:         32,
       critico:        0,
@@ -36,11 +36,6 @@ export const TestData = {
     },
     pedido:   '00863791',
     articulo: '61010002RG',
-  },
-  urls: {
-    base: process.env.BASE_URL || 'http://industriatest.ocaicp.com',
-    login: '/',
-    dashboard: '/andalucia',
   },
   tableHeaders: [
     'Pedido',
@@ -66,10 +61,4 @@ export const TestData = {
     'Dir. Instalacion',
     'Estado',
   ],
-  resultFilters: ['SIN DEFECTOS', 'LEVE A REPARAR', 'GRAVE', 'CRÍTICO'],
-  timeouts: {
-    short: 5_000,
-    medium: 15_000,
-    long: 30_000,
-  },
 };

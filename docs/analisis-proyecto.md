@@ -376,9 +376,9 @@ Chrome 111+ en modo headless bloquea las descargas por HTTP (sin TLS), y el ento
 
 Los botones de navegación del date picker de Vuetify quedan con `display:none` en Firefox headless, y ni `force:true` ni `dispatchEvent` lo solucionan de forma confiable. Por eso el proyecto usa **exclusivamente Chromium**.
 
-### BUG-08 — `MadridPage` usa `(this as any)` para pisar locators
+### BUG-08 — `MadridPage` usaba `(this as any)` para pisar locators — ✅ resuelto (2026-08-04)
 
-`MadridPage` necesita sobreescribir los locators de fecha heredados de `AndaluciaPage` (que son `readonly` en TypeScript), así que lo hace con un cast forzado que rompe la seguridad de tipos. Funciona en runtime, es deuda técnica — ver sugerencia de refactor en la sección 11.
+`MadridPage` necesitaba sobreescribir los locators de fecha heredados de `AndaluciaPage`, y como eran `readonly` en TypeScript, lo hacía con un cast forzado (`(this as any).dateDesde = ...`) que rompía la seguridad de tipos. Se resolvió sacando el modificador `readonly` de esos 4 locators concretos (`dateDesde`, `dateHasta`, `dateDesdeSlot`, `dateHastaSlot`) en `AndaluciaPage` — quedan públicos y asignables, sin necesidad de `protected` (que hubiera roto el acceso externo desde los specs, que también leen estos locators directamente). Los otros 16 locators de `AndaluciaPage` no se tocaron, siguen `readonly` porque nadie los sobreescribe.
 
 ### Problemas del setup de hoy (2026-08-03), por si se repiten
 
@@ -420,10 +420,10 @@ node scripts/testrail-verify.js           # verifica que las credenciales de Tes
 
 Ordenadas por impacto, no por orden de cuándo se detectaron:
 
-- **Refactor de `MadridPage extends AndaluciaPage`** — conceptualmente Madrid no es un "tipo de" Andalucía. Cambiar los locators de `AndaluciaPage` de `readonly` a `protected` para que `MadridPage` los pueda sobreescribir sin el cast `(this as any)`.
+- ~~Refactor de `MadridPage extends AndaluciaPage`~~ — ✅ hecho el 2026-08-04, ver [BUG-08](#bug-08--madridpage-usaba-this-as-any-para-pisar-locators--resuelto-2026-08-04).
 - **Solución permanente para las descargas bloqueadas en CI** — la opción más limpia a largo plazo es poner TLS/HTTPS en el entorno de test; mientras tanto, se podría probar/validar el archivo generado llamando directo al endpoint de la API en vez de descargarlo vía UI.
 - **Los specs de estructura de UI (`andalucia.spec.ts`, `madrid.spec.ts`, `login.spec.ts`) no corren en ningún CI** — solo con `npm test` local. Si se quiere que su cobertura cuente para algo formal, habría que agregarlos a algún job de CI y darles anotaciones de TestRail (hoy no tienen).
-- **Proceso para mantener actualizados los totales esperados en `test-data.ts`** — hoy no hay ningún aviso automático cuando el entorno de test cambia sus datos y los conteos hardcodeados quedan desactualizados. Se podría armar un script que compare contra la API del backend y avise si difieren.
+- **Proceso para mantener actualizados los totales esperados en `test-data.ts`** — el 2026-08-04 se corrigieron `porFechas` (165→163) y `sinDefectos` (100→98) tras confirmar en 2 corridas seguidas que eran los valores reales y estables del entorno de test. Pero sigue sin existir ningún aviso automático para la próxima vez que el entorno cambie sus datos — se podría armar un script que compare contra la API del backend y avise si difieren, en vez de descubrirlo por un test que falla.
 - **Instalar el plugin HTML Publisher en Jenkins** (requiere admin) para poder ver el reporte de Playwright directo en el navegador sin tener que descargarlo.
 - **Eliminar `.github/workflows/playwright.yml`** si definitivamente no se va a volver a usar GitHub — hoy queda como archivo muerto en el repo.
 - **Revisar si conviene mantener los dos caminos de CI** (Bitbucket Pipelines y Jenkins) a largo plazo, o consolidar en uno solo una vez que quede claro cuál es el más estable/accesible para el equipo que se queda con el proyecto.

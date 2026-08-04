@@ -5,10 +5,10 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 export class AndaluciaPage extends BasePage {
-  readonly dateDesde: Locator;
-  readonly dateHasta: Locator;
-  readonly dateDesdeSlot: Locator;
-  readonly dateHastaSlot: Locator;
+  dateDesde: Locator;
+  dateHasta: Locator;
+  dateDesdeSlot: Locator;
+  dateHastaSlot: Locator;
 
   readonly numeroPedido: Locator;
 
@@ -227,15 +227,5 @@ export class AndaluciaPage extends BasePage {
     return this.page.$$eval('th', ths =>
       ths.map(th => (th as HTMLElement).innerText.trim()).filter(t => t)
     );
-  }
-
-  async getTableRowCount(): Promise<number> {
-    const rows = await this.page.$$('tbody tr');
-    return rows.length;
-  }
-
-  async isResultFilterActive(button: Locator): Promise<boolean> {
-    const cls = await button.getAttribute('class') ?? '';
-    return cls.includes('v-btn--active') || cls.includes('active');
   }
 }

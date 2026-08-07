@@ -37,6 +37,10 @@ pipeline {
           expression { params.REGION == 'andalucia' }
         }
       }
+      environment {
+        PLAYWRIGHT_HTML_REPORT       = 'reports/html-andalucia'
+        PLAYWRIGHT_JUNIT_OUTPUT_FILE = 'reports/junit/andalucia-results.xml'
+      }
       steps {
         bat 'npm run test:andalucia'
       }
@@ -48,6 +52,10 @@ pipeline {
           expression { params.REGION == 'all' }
           expression { params.REGION == 'madrid' }
         }
+      }
+      environment {
+        PLAYWRIGHT_HTML_REPORT       = 'reports/html-madrid'
+        PLAYWRIGHT_JUNIT_OUTPUT_FILE = 'reports/junit/madrid-results.xml'
       }
       steps {
         bat 'npm run test:madrid'

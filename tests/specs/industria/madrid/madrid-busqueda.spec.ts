@@ -113,7 +113,6 @@ test.describe('Madrid - Búsqueda por fechas 08-09 enero 2026', () => {
 
   test('Verificar que Generar DBF descarga un ZIP con certificadoFirmado_ y CertificadoSellado_ del código de instalación', async ({ authenticatedMadridPage, page }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C66' });
-    test.skip(!!process.env.CI, 'Descarga HTTP bloqueada por Chrome en CI — ejecutar en local');
     test.setTimeout(180_000);
     await authenticatedMadridPage.buscarPorFechas(desde, hasta);
 

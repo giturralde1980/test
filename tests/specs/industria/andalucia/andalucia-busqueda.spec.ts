@@ -27,7 +27,7 @@ function xmlHas(xml: string, tag: string): boolean {
 test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
   test.describe.configure({ timeout: process.env.CI ? 120_000 : 60_000 });
 
-  test('Verificar que la búsqueda por fechas 08-09 ene 2026 devuelve 165 registros', async ({ authenticatedPage }) => {
+  test('Verificar que la búsqueda por fechas 08-09 ene 2026 devuelve 163 registros', async ({ authenticatedPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C46' });
     await authenticatedPage.buscarPorFechas(desde, hasta);
     const count = await authenticatedPage.getTotalResultCount();
@@ -36,7 +36,7 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
     });
   });
 
-  test('Verificar que el filtro Sin Defectos + fechas devuelve 100 registros', async ({ authenticatedPage }) => {
+  test('Verificar que el filtro Sin Defectos + fechas devuelve 99 registros', async ({ authenticatedPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C47' });
     await setFechas(authenticatedPage);
     await test.step('Clic en botón "SIN DEFECTOS"', () => authenticatedPage.btnSinDefectos.click());
@@ -47,7 +47,7 @@ test.describe('Andalucía - Búsqueda por fechas 08-09 enero 2026', () => {
     });
   });
 
-  test('Verificar que el filtro Leve a Reparar + fechas devuelve 33 registros', async ({ authenticatedPage }) => {
+  test('Verificar que el filtro Leve a Reparar + fechas devuelve 32 registros', async ({ authenticatedPage }) => {
     test.info().annotations.push({ type: 'testrail', description: 'C48' });
     await setFechas(authenticatedPage);
     await test.step('Clic en botón "LEVE A REPARAR"', () => authenticatedPage.btnLeveAReparar.click());

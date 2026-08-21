@@ -5,10 +5,10 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 export class AndaluciaPage extends BasePage {
-  dateDesde: Locator;
-  dateHasta: Locator;
-  dateDesdeSlot: Locator;
-  dateHastaSlot: Locator;
+  readonly dateDesde: Locator;
+  readonly dateHasta: Locator;
+  readonly dateDesdeSlot: Locator;
+  readonly dateHastaSlot: Locator;
 
   readonly numeroPedido: Locator;
 
